@@ -1,0 +1,180 @@
+name: Evaluate Solution
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+jobs:
+  evaluate:
+    runs-on: ubuntu-latest
+
+    services:
+      mongodb:
+        image: mongo:6
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "mongosh --eval 'db.adminCommand({ping: 1})'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run ESLint
+        id: eslint
+        run: |
+          npm run lint > eslint-report.txt 2>&1 || true
+          echo "eslint_output<<EOF" >> $GITHUB_OUTPUT
+          cat eslint-report.txt >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+        continue-on-error: true
+
+      - name: Seed Database
+        env:
+          DATABASE_URL: mongodb://localhost:27017/pokemon_battle_test
+        run: npm run seed
+
+      - name: Run Tests
+        id: tests
+        env:
+          DATABASE_URL: mongodb://localhost:27017/pokemon_battle_test
+          NODE_ENV: test
+        run: |
+          npm run test:coverage -- --json --outputFile=test-results.json || true
+          npm run test:coverage -- --testResultsProcessor=jest-json-reporter || true
+        continue-on-error: true
+
+      - name: Calculate Scores
+        id: score
+        run: |
+          node -e "
+          const fs = require('fs');
+          let testResults = { numPassedTests: 0, numTotalTests: 1 };
+          try {
+            if (fs.existsSync('test-results.json')) {
+              testResults = JSON.parse(fs.readFileSync('test-results.json', 'utf8'));
+            }
+          } catch(e) {
+            console.log('Could not read test results');
+          }
+
+          // Calculate scores
+          const testPassRate = testResults.numTotalTests > 0
+            ? (testResults.numPassedTests / testResults.numTotalTests) * 100
+            : 0;
+
+          const functionalityScore = Math.round((testPassRate / 100) * 40);
+          const codeQualityScore = 20; // Manual review needed
+          const testingScore = Math.round((testPassRate / 100) * 15);
+          const performanceScore = 8; // Estimated
+          const documentationScore = 7; // Estimated
+
+          const totalScore = functionalityScore + codeQualityScore + testingScore + performanceScore + documentationScore;
+
+          console.log('FUNCTIONALITY_SCORE=' + functionalityScore);
+          console.log('CODE_QUALITY_SCORE=' + codeQualityScore);
+          console.log('TESTING_SCORE=' + testingScore);
+          console.log('PERFORMANCE_SCORE=' + performanceScore);
+          console.log('DOCUMENTATION_SCORE=' + documentationScore);
+          console.log('TOTAL_SCORE=' + totalScore);
+          console.log('TEST_PASS_RATE=' + testPassRate.toFixed(1));
+          console.log('TESTS_PASSED=' + testResults.numPassedTests);
+          console.log('TESTS_TOTAL=' + testResults.numTotalTests);
+
+          fs.writeFileSync('scores.txt',
+            'FUNCTIONALITY_SCORE=' + functionalityScore + '\\n' +
+            'CODE_QUALITY_SCORE=' + codeQualityScore + '\\n' +
+            'TESTING_SCORE=' + testingScore + '\\n' +
+            'PERFORMANCE_SCORE=' + performanceScore + '\\n' +
+            'DOCUMENTATION_SCORE=' + documentationScore + '\\n' +
+            'TOTAL_SCORE=' + totalScore + '\\n' +
+            'TEST_PASS_RATE=' + testPassRate.toFixed(1) + '\\n' +
+            'TESTS_PASSED=' + testResults.numPassedTests + '\\n' +
+            'TESTS_TOTAL=' + testResults.numTotalTests
+          );
+          "
+        continue-on-error: true
+
+      - name: Read Scores
+        id: read_scores
+        run: |
+          if [ -f scores.txt ]; then
+            cat scores.txt >> $GITHUB_OUTPUT
+          else
+            echo "TOTAL_SCORE=0" >> $GITHUB_OUTPUT
+            echo "TEST_PASS_RATE=0" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Post PR Comment
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const fs = require('fs');
+            let scores = {
+              FUNCTIONALITY_SCORE: 0,
+              CODE_QUALITY_SCORE: 0,
+              TESTING_SCORE: 0,
+              PERFORMANCE_SCORE: 0,
+              DOCUMENTATION_SCORE: 0,
+              TOTAL_SCORE: 0,
+              TEST_PASS_RATE: 0,
+              TESTS_PASSED: 0,
+              TESTS_TOTAL: 0
+            };
+
+            try {
+              const scoresText = fs.readFileSync('scores.txt', 'utf8');
+              scoresText.split('\\n').forEach(line => {
+                const [key, value] = line.split('=');
+                if (key && value) scores[key] = value;
+              });
+            } catch(e) {
+              console.log('Using default scores');
+            }
+
+            const passing = parseInt(scores.TOTAL_SCORE) >= 70;
+            const statusEmoji = passing ? '✅' : '❌';
+
+            const comment = `## ${statusEmoji} Assessment Results
+
+            ### Overall Score: ${scores.TOTAL_SCORE}/100 ${passing ? '(PASSING)' : '(NEEDS IMPROVEMENT)'}
+
+            #### Score Breakdown:
+            | Category | Score | Weight |
+            |----------|-------|--------|
+            | Functionality | ${scores.FUNCTIONALITY_SCORE}/40 | 40% |
+            | Code Quality | ${scores.CODE_QUALITY_SCORE}/25 | 25% |
+            | Testing | ${scores.TESTING_SCORE}/15 | 15% |
+            | Performance | ${scores.PERFORMANCE_SCORE}/10 | 10% |
+            | Documentation | ${scores.DOCUMENTATION_SCORE}/10 | 10% |
+
+            #### Test Results:
+            - **Tests Passed**: ${scores.TESTS_PASSED}/${scores.TESTS_TOTAL}
+            - **Pass Rate**: ${scores.TEST_PASS_RATE}%
+
+            ${passing
+              ? '🎉 **Congratulations!** Your solution meets the requirements.'
+              : '📝 **Please review** the failed tests and improve your solution. Passing score: 70/100'}
+
+            ---
+            *This is an automated evaluation. Manual code review may adjust the final score.*
+            `;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
