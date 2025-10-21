@@ -64,8 +64,7 @@ How to use:
 - Path params:
   - `tournamentId` (string, Mongo ObjectId): Existing tournament id
 - Headers:
-  - `X-API-Key` if API key auth is enabled in your environment
-  - or `Authorization: Bearer <token>` if JWT auth is enabled
+  - `Authorization: Bearer <token>` (JWT authentication required)
 - Body (JSON):
   - `attacker` (string | number): Pokémon name or numeric id supported by PokéAPI
   - `defender` (string | number): Pokémon name or numeric id supported by PokéAPI
@@ -74,7 +73,7 @@ Example:
 ```bash
 curl -X POST \
   -H "Content-Type: application/json" \
-  -H "X-API-Key: test-api-key-123-user1" \
+  -H "Authorization: Bearer <your-jwt-token>" \
   http://localhost:3000/api/tournaments/<tournamentId>/battle \
   -d '{"attacker":"pikachu","defender":"bulbasaur"}'
 ```
@@ -163,7 +162,7 @@ Example Jest snippet:
 ```js
 const res = await request(app)
   .post(`/api/tournaments/${tournamentId}/battle`)
-  .set('X-API-Key', TEST_API_KEY)
+  .set('Authorization', `Bearer ${JWT_TOKEN}`)
   .send({ attacker: 'pikachu', defender: 'bulbasaur' });
 
 expect(res.status).toBe(201);
@@ -263,7 +262,7 @@ The following systems are working correctly and should NOT be modified:
 
 ### Create Tournament
 - **POST** `/api/tournaments`
-- **Headers**: `X-API-Key: test-api-key-123-user1` or `Authorization: Bearer <token>`
+- **Headers**: `Authorization: Bearer <token>`
 - **Body**: 
   ```json
   {
@@ -288,7 +287,7 @@ The following systems are working correctly and should NOT be modified:
 
 ### List Live Tournaments  
 - **GET** `/api/tournaments/live`
-- **Headers**: `X-API-Key: test-api-key-123-user1` or `Authorization: Bearer <token>`
+- **Headers**: `Authorization: Bearer <token>`
 - **Response (200)**:
   ```json
   {
@@ -307,7 +306,7 @@ The following systems are working correctly and should NOT be modified:
 
 ### List Completed Tournaments
 - **GET** `/api/tournaments/completed`
-- **Headers**: `X-API-Key: test-api-key-123-user1` or `Authorization: Bearer <token>`
+- **Headers**: `Authorization: Bearer <token>`
 - **Response (200)**:
   ```json
   {
@@ -336,7 +335,7 @@ The following systems are working correctly and should NOT be modified:
 
 ### Get Tournament Results
 - **GET** `/api/tournaments/:id/results`
-- **Headers**: `X-API-Key: test-api-key-123-user1` or `Authorization: Bearer <token>`
+- **Headers**: `Authorization: Bearer <token>`
 - **Response (200)**:
   ```json
   {
@@ -365,13 +364,13 @@ The following systems are working correctly and should NOT be modified:
 - Battle responses show Pokemon names as simple strings (e.g., `"attacker1": "pikachu"`) rather than objects with IDs
 - `tournament_ends_in` should be in human-readable format: "2h 30m 45s", "45m 30s", "30s", or "Expired"
 - Expired tournaments are automatically moved to "completed" status
-- All endpoints require authentication via API key or JWT token
+- All endpoints require JWT authentication
 
 ## Additional API Endpoints
 
 ### Pokemon List
 - **GET** `/api/pokemon/list`
-- **Headers**: `X-API-Key: test-api-key-123-user1` or `Authorization: Bearer <token>`
+- **Headers**: `Authorization: Bearer <token>`
 - **Query Parameters**:
   - `page` (optional): Page number (default: 1, min: 1)
   - `limit` (optional): Items per page (default: 20, min: 1, max: 100)
@@ -511,8 +510,6 @@ The following systems are working correctly and should NOT be modified:
 ## Edge Cases and Error Scenarios
 
 ### Authentication Edge Cases
-- **Missing API Key**: Returns 401 "Authentication required"
-- **Invalid API Key**: Returns 401 "Authentication required"
 - **Missing JWT Token**: Returns 401 "Authentication required"
 - **Invalid JWT Token**: Returns 401 "Authentication required"
 - **Expired JWT Token**: Returns 401 "Authentication required"
@@ -892,9 +889,6 @@ npm test
 
 #### 1. Test Authentication
 ```bash
-# Test with API Key
-curl -H "X-API-Key: test-api-key-123-user1" http://localhost:3000/api/pokemon/list
-
 # Test with JWT Token (after login)
 curl -H "Authorization: Bearer <your-jwt-token>" http://localhost:3000/api/pokemon/list
 ```
@@ -917,17 +911,17 @@ curl -X POST http://localhost:3000/api/auth/login \
 # Create a tournament
 curl -X POST http://localhost:3000/api/tournaments \
   -H "Content-Type: application/json" \
-  -H "X-API-Key: test-api-key-123-user1" \
+  -H "Authorization: Bearer <your-jwt-token>" \
   -d '{"name": "Test Tournament", "max_rounds": 3, "tournament_active_time": 10}'
 
 # List live tournaments
-curl -H "X-API-Key: test-api-key-123-user1" http://localhost:3000/api/tournaments/live
+curl -H "Authorization: Bearer <your-jwt-token>" http://localhost:3000/api/tournaments/live
 
 # List completed tournaments
-curl -H "X-API-Key: test-api-key-123-user1" http://localhost:3000/api/tournaments/completed
+curl -H "Authorization: Bearer <your-jwt-token>" http://localhost:3000/api/tournaments/completed
 
 # Get tournament results
-curl -H "X-API-Key: test-api-key-123-user1" http://localhost:3000/api/tournaments/<tournament-id>/results
+curl -H "Authorization: Bearer <your-jwt-token>" http://localhost:3000/api/tournaments/<tournament-id>/results
 ```
 
 #### 4. Test Battle Simulation
@@ -935,34 +929,34 @@ curl -H "X-API-Key: test-api-key-123-user1" http://localhost:3000/api/tournament
 # Add a battle to tournament
 curl -X POST http://localhost:3000/api/tournaments/<tournament-id>/battle \
   -H "Content-Type: application/json" \
-  -H "X-API-Key: test-api-key-123-user1" \
+  -H "Authorization: Bearer <your-jwt-token>" \
   -d '{"attacker": "pikachu", "defender": "bulbasaur"}'
 ```
 
 #### 5. Test Pokemon List with Filtering
 ```bash
 # Basic list
-curl -H "X-API-Key: test-api-key-123-user1" "http://localhost:3000/api/pokemon/list"
+curl -H "Authorization: Bearer <your-jwt-token>" "http://localhost:3000/api/pokemon/list"
 
 # With filtering and pagination
-curl -H "X-API-Key: test-api-key-123-user1" "http://localhost:3000/api/pokemon/list?type=fire&generation=1&page=1&limit=10&sortBy=name&sortOrder=asc"
+curl -H "Authorization: Bearer <your-jwt-token>" "http://localhost:3000/api/pokemon/list?type=fire&generation=1&page=1&limit=10&sortBy=name&sortOrder=asc"
 ```
 
 #### 6. Test Rate Limiting
 ```bash
 # Make multiple requests quickly - should eventually get 429 error
 for i in {1..105}; do
-  curl -H "X-API-Key: test-api-key-123-user1" http://localhost:3000/api/pokemon/list
+  curl -H "Authorization: Bearer <your-jwt-token>" http://localhost:3000/api/pokemon/list
 done
 ```
 
 #### 7. Test Caching
 ```bash
 # First request should be slow (uncached)
-time curl -H "X-API-Key: test-api-key-123-user1" "http://localhost:3000/api/pokemon/list?type=fire"
+time curl -H "Authorization: Bearer <your-jwt-token>" "http://localhost:3000/api/pokemon/list?type=fire"
 
 # Second identical request should be fast (cached)
-time curl -H "X-API-Key: test-api-key-123-user1" "http://localhost:3000/api/pokemon/list?type=fire"
+time curl -H "Authorization: Bearer <your-jwt-token>" "http://localhost:3000/api/pokemon/list?type=fire"
 ```
 
 #### 8. Test Edge Cases
@@ -970,17 +964,17 @@ time curl -H "X-API-Key: test-api-key-123-user1" "http://localhost:3000/api/poke
 # Test same Pokemon battle (should fail)
 curl -X POST http://localhost:3000/api/tournaments/<tournament-id>/battle \
   -H "Content-Type: application/json" \
-  -H "X-API-Key: test-api-key-123-user1" \
+  -H "Authorization: Bearer <your-jwt-token>" \
   -d '{"attacker": "pikachu", "defender": "pikachu"}'
 
 # Test invalid tournament ID
 curl -X POST http://localhost:3000/api/tournaments/invalid-id/battle \
   -H "Content-Type: application/json" \
-  -H "X-API-Key: test-api-key-123-user1" \
+  -H "Authorization: Bearer <your-jwt-token>" \
   -d '{"attacker": "pikachu", "defender": "bulbasaur"}'
 
 # Test invalid Pokemon list parameters
-curl -H "X-API-Key: test-api-key-123-user1" "http://localhost:3000/api/pokemon/list?page=0&limit=200&sortBy=invalid"
+curl -H "Authorization: Bearer <your-jwt-token>" "http://localhost:3000/api/pokemon/list?page=0&limit=200&sortBy=invalid"
 
 # Test missing authentication
 curl http://localhost:3000/api/pokemon/list
@@ -1136,7 +1130,7 @@ Your implementation is successful when:
 - **Error Responses**: Consistent JSON format with appropriate HTTP status codes
 
 ### Critical Requirements
-- All endpoints require authentication (API key or JWT token)
+- All endpoints require JWT authentication
 - Time formatting: "2h 30m 45s", "45m 30s", "30s", or "Expired"
 - Auto-complete expired tournaments
 - Battle details show only essential information

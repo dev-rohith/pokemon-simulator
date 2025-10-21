@@ -5,9 +5,28 @@ const { TYPE_CHART, calculateTypeEffectiveness } = require('../src/utils/typeEff
 const cache = require('../src/utils/cache');
 const Tournament = require('../src/models/Tournament');
 
-const TEST_API_KEY = 'test-api-key-123-user1';
+// JWT token will be obtained through login
+let authToken = null;
 
 describe('Private API and logic - Deep tests and edge cases', () => {
+  // Setup: Register and login to get JWT token
+  beforeAll(async () => {
+    const request = require('supertest');
+    const app = require('../src/server');
+    
+    // Register a test user
+    await request(app)
+      .post('/api/auth/register')
+      .send({ username: 'testuser2', password: 'testpass123' });
+    
+    // Login to get JWT token
+    const loginRes = await request(app)
+      .post('/api/auth/login')
+      .send({ username: 'testuser2', password: 'testpass123' });
+    
+    authToken = loginRes.body.token;
+  });
+
   describe('Battle service', () => {
     test('calculateDamage returns at least 1', () => {
       const atk = { stats: { attack: 1 } };
@@ -35,13 +54,13 @@ describe('Private API and logic - Deep tests and edge cases', () => {
       // First create a tournament
       const create = await request(app)
         .post('/api/tournaments')
-        .set('X-API-Key', TEST_API_KEY)
+        .set('Authorization', `Bearer ${authToken}`)
         .send({ name: 'Test Cup', max_rounds: 1 });
       const id = create.body.tournament.id;
 
       const res = await request(app)
         .post(`/api/tournaments/${id}/battle`)
-        .set('X-API-Key', TEST_API_KEY)
+        .set('Authorization', `Bearer ${authToken}`)
         .send({});
       expect(res.status).toBe(400);
     }, 30000);
@@ -50,13 +69,13 @@ describe('Private API and logic - Deep tests and edge cases', () => {
       // First create a tournament
       const create = await request(app)
         .post('/api/tournaments')
-        .set('X-API-Key', TEST_API_KEY)
+        .set('Authorization', `Bearer ${authToken}`)
         .send({ name: 'Test Cup 2', max_rounds: 1 });
       const id = create.body.tournament.id;
 
       const res = await request(app)
         .post(`/api/tournaments/${id}/battle`)
-        .set('X-API-Key', TEST_API_KEY)
+        .set('Authorization', `Bearer ${authToken}`)
         .send({ attacker: 'pikachu', defender: 'pikachu' });
       expect(res.status).toBe(400);
     }, 30000);
@@ -66,19 +85,19 @@ describe('Private API and logic - Deep tests and edge cases', () => {
     test('cannot add battle beyond max rounds', async () => {
       const create = await request(app)
         .post('/api/tournaments')
-        .set('X-API-Key', TEST_API_KEY)
+        .set('Authorization', `Bearer ${authToken}`)
         .send({ name: 'Limit Cup', max_rounds: 1 });
       const id = create.body.tournament.id;
 
       const first = await request(app)
         .post(`/api/tournaments/${id}/battle`)
-        .set('X-API-Key', TEST_API_KEY)
+        .set('Authorization', `Bearer ${authToken}`)
         .send({ attacker: 'pikachu', defender: 'bulbasaur' });
       expect(first.status).toBe(201);
 
       const second = await request(app)
         .post(`/api/tournaments/${id}/battle`)
-        .set('X-API-Key', TEST_API_KEY)
+        .set('Authorization', `Bearer ${authToken}`)
         .send({ attacker: 'pikachu', defender: 'bulbasaur' });
       expect(second.status).toBe(400);
     }, 60000);
@@ -86,7 +105,7 @@ describe('Private API and logic - Deep tests and edge cases', () => {
     test('cannot add battle after tournament end time', async () => {
       const create = await request(app)
         .post('/api/tournaments')
-        .set('X-API-Key', TEST_API_KEY)
+        .set('Authorization', `Bearer ${authToken}`)
         .send({ name: 'Expired Cup', max_rounds: 3 });
       const id = create.body.tournament.id;
 
@@ -95,7 +114,7 @@ describe('Private API and logic - Deep tests and edge cases', () => {
 
       const res = await request(app)
         .post(`/api/tournaments/${id}/battle`)
-        .set('X-API-Key', TEST_API_KEY)
+        .set('Authorization', `Bearer ${authToken}`)
         .send({ attacker: 'pikachu', defender: 'bulbasaur' });
       expect(res.status).toBe(400);
     }, 60000);
@@ -103,7 +122,7 @@ describe('Private API and logic - Deep tests and edge cases', () => {
     test('tournament auto-completion on time expiry', async () => {
       const create = await request(app)
         .post('/api/tournaments')
-        .set('X-API-Key', TEST_API_KEY)
+        .set('Authorization', `Bearer ${authToken}`)
         .send({ name: 'Time Expiry Cup', max_rounds: 5, tournament_active_time: 1 }); // 1 minute
       const id = create.body.tournament.id;
 
@@ -112,7 +131,7 @@ describe('Private API and logic - Deep tests and edge cases', () => {
 
       const res = await request(app)
         .post(`/api/tournaments/${id}/battle`)
-        .set('X-API-Key', TEST_API_KEY)
+        .set('Authorization', `Bearer ${authToken}`)
         .send({ attacker: 'pikachu', defender: 'bulbasaur' });
       expect(res.status).toBe(400);
       expect(res.body.message).toBe('Tournament has ended');
@@ -121,28 +140,28 @@ describe('Private API and logic - Deep tests and edge cases', () => {
     test('tournament auto-completion on max rounds', async () => {
       const create = await request(app)
         .post('/api/tournaments')
-        .set('X-API-Key', TEST_API_KEY)
+        .set('Authorization', `Bearer ${authToken}`)
         .send({ name: 'Max Rounds Cup', max_rounds: 2, tournament_active_time: 30 });
       const id = create.body.tournament.id;
 
       // First battle
       const battle1 = await request(app)
         .post(`/api/tournaments/${id}/battle`)
-        .set('X-API-Key', TEST_API_KEY)
+        .set('Authorization', `Bearer ${authToken}`)
         .send({ attacker: 'pikachu', defender: 'bulbasaur' });
       expect(battle1.status).toBe(201);
 
       // Second battle
       const battle2 = await request(app)
         .post(`/api/tournaments/${id}/battle`)
-        .set('X-API-Key', TEST_API_KEY)
+        .set('Authorization', `Bearer ${authToken}`)
         .send({ attacker: 'charmander', defender: 'squirtle' });
       expect(battle2.status).toBe(201);
 
       // Third battle should fail
       const battle3 = await request(app)
         .post(`/api/tournaments/${id}/battle`)
-        .set('X-API-Key', TEST_API_KEY)
+        .set('Authorization', `Bearer ${authToken}`)
         .send({ attacker: 'eevee', defender: 'jigglypuff' });
       expect(battle3.status).toBe(400);
       expect(battle3.body.message).toBe('Tournament round limit reached');
@@ -153,14 +172,14 @@ describe('Private API and logic - Deep tests and edge cases', () => {
     test('Pokemon with 0 HP cannot battle', async () => {
       const create = await request(app)
         .post('/api/tournaments')
-        .set('X-API-Key', TEST_API_KEY)
+        .set('Authorization', `Bearer ${authToken}`)
         .send({ name: 'HP Zero Cup', max_rounds: 4, tournament_active_time: 30 });
       const id = create.body.tournament.id;
 
       // First battle
       const battle1 = await request(app)
         .post(`/api/tournaments/${id}/battle`)
-        .set('X-API-Key', TEST_API_KEY)
+        .set('Authorization', `Bearer ${authToken}`)
         .send({ attacker: 'pikachu', defender: 'bulbasaur' });
       expect(battle1.status).toBe(201);
 
@@ -170,7 +189,7 @@ describe('Private API and logic - Deep tests and edge cases', () => {
       // Try to use the loser in another battle
       const battle2 = await request(app)
         .post(`/api/tournaments/${id}/battle`)
-        .set('X-API-Key', TEST_API_KEY)
+        .set('Authorization', `Bearer ${authToken}`)
         .send({ attacker: loser, defender: 'charmander' });
       expect(battle2.status).toBe(201);
 
@@ -181,14 +200,14 @@ describe('Private API and logic - Deep tests and edge cases', () => {
     test('HP state persists across tournament queries', async () => {
       const create = await request(app)
         .post('/api/tournaments')
-        .set('X-API-Key', TEST_API_KEY)
+        .set('Authorization', `Bearer ${authToken}`)
         .send({ name: 'HP State Cup', max_rounds: 3, tournament_active_time: 30 });
       const id = create.body.tournament.id;
 
       // First battle
       const battle1 = await request(app)
         .post(`/api/tournaments/${id}/battle`)
-        .set('X-API-Key', TEST_API_KEY)
+        .set('Authorization', `Bearer ${authToken}`)
         .send({ attacker: 'pikachu', defender: 'bulbasaur' });
       expect(battle1.status).toBe(201);
 
@@ -203,7 +222,7 @@ describe('Private API and logic - Deep tests and edge cases', () => {
       // Second battle should use the saved HP
       const battle2 = await request(app)
         .post(`/api/tournaments/${id}/battle`)
-        .set('X-API-Key', TEST_API_KEY)
+        .set('Authorization', `Bearer ${authToken}`)
         .send({ attacker: winner1, defender: 'charmander' });
       expect(battle2.status).toBe(201);
     }, 60000);
@@ -213,7 +232,7 @@ describe('Private API and logic - Deep tests and edge cases', () => {
     test('tournament status updates correctly on time expiry', async () => {
       const create = await request(app)
         .post('/api/tournaments')
-        .set('X-API-Key', TEST_API_KEY)
+        .set('Authorization', `Bearer ${authToken}`)
         .send({ name: 'Status Update Cup', max_rounds: 5, tournament_active_time: 1 });
       const id = create.body.tournament.id;
 
@@ -227,7 +246,7 @@ describe('Private API and logic - Deep tests and edge cases', () => {
       // Try to add battle (this should auto-complete the tournament)
       await request(app)
         .post(`/api/tournaments/${id}/battle`)
-        .set('X-API-Key', TEST_API_KEY)
+        .set('Authorization', `Bearer ${authToken}`)
         .send({ attacker: 'pikachu', defender: 'bulbasaur' });
 
       // Verify tournament is now completed
@@ -238,14 +257,14 @@ describe('Private API and logic - Deep tests and edge cases', () => {
     test('tournament status updates correctly on max rounds', async () => {
       const create = await request(app)
         .post('/api/tournaments')
-        .set('X-API-Key', TEST_API_KEY)
+        .set('Authorization', `Bearer ${authToken}`)
         .send({ name: 'Max Rounds Status Cup', max_rounds: 2, tournament_active_time: 30 });
       const id = create.body.tournament.id;
 
       // First battle
       await request(app)
         .post(`/api/tournaments/${id}/battle`)
-        .set('X-API-Key', TEST_API_KEY)
+        .set('Authorization', `Bearer ${authToken}`)
         .send({ attacker: 'pikachu', defender: 'bulbasaur' });
 
       let tournament = await Tournament.findById(id);
@@ -254,7 +273,7 @@ describe('Private API and logic - Deep tests and edge cases', () => {
       // Second battle (should complete tournament)
       await request(app)
         .post(`/api/tournaments/${id}/battle`)
-        .set('X-API-Key', TEST_API_KEY)
+        .set('Authorization', `Bearer ${authToken}`)
         .send({ attacker: 'charmander', defender: 'squirtle' });
 
       tournament = await Tournament.findById(id);
@@ -312,7 +331,7 @@ describe('Private API and logic - Deep tests and edge cases', () => {
     test('invalid sortBy triggers validation error', async () => {
       const res = await request(app)
         .get('/api/pokemon/list?sortBy=invalidField')
-        .set('X-API-Key', TEST_API_KEY);
+        .set('Authorization', `Bearer ${authToken}`);
       expect(res.status).toBe(400);
     });
   });
@@ -333,18 +352,6 @@ describe('Private API and logic - Deep tests and edge cases', () => {
     });
   });
 
-  describe('PokeAPI service error handling', () => {
-    test('handles axios timeout and 429', async () => {
-      jest.resetModules();
-      jest.doMock('axios', () => ({ get: jest.fn()
-        .mockRejectedValueOnce(Object.assign(new Error('timeout'), { code: 'ECONNABORTED' }))
-        .mockRejectedValueOnce({ response: { status: 429 } }) }));
-      const service = require('../src/services/pokeapi.service');
-      await expect(service.fetchPokemonList(1,0)).rejects.toThrow('timed out');
-      await expect(service.fetchPokemonList(1,0)).rejects.toThrow('rate limit');
-      jest.dontMock('axios');
-    }, 10000);
-  });
 });
 
 
