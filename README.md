@@ -1,12 +1,26 @@
 # Pokemon Battle Simulator - AntStack Technical Assessment
 
-## Battle-Only Quick Start
+## Quick Start
 
-This repo is simplified to keep only the battle flow for tournaments. Non-battle tournament endpoints (create/list/results) were removed from the routes and controller.
+This Pokemon Battle Simulator API includes tournament management and battle simulation functionality.
 
-Endpoint:
+### Main Endpoints:
 
-POST `/tournaments/:tournamentId/battle`
+**Tournament Management:**
+- `POST /api/tournaments` - Create tournament
+- `GET /api/tournaments/live` - List live tournaments  
+- `GET /api/tournaments/completed` - List completed tournaments
+- `GET /api/tournaments/:id/results` - Get tournament results
+
+**Battle Simulation:**
+- `POST /api/tournaments/:tournamentId/battle` - Add battle to tournament
+
+**Pokemon Data:**
+- `GET /api/pokemon/list` - Get Pokemon list with filtering and pagination
+
+**Authentication:**
+- `POST /api/auth/register` - User registration
+- `POST /api/auth/login` - User login
 
 Request body:
 
@@ -25,9 +39,7 @@ Response:
     "id": "<battleId>",
     "tournamentId": "<tournamentId>",
     "battleNumber": 1,
-    "attacker1Id": 25,
     "attacker1Name": "pikachu",
-    "attacker2Id": 1,
     "attacker2Name": "bulbasaur",
     "winnerName": "pikachu",
     "winnerRemainingHp": 37,
@@ -74,9 +86,7 @@ curl -X POST \
     "id": "<battleId>",
     "tournamentId": "<tournamentId>",
     "battleNumber": 1,
-    "attacker1Id": 25,
     "attacker1Name": "pikachu",
-    "attacker2Id": 1,
     "attacker2Name": "bulbasaur",
     "winnerName": "pikachu",
     "winnerRemainingHp": 37,
@@ -246,6 +256,320 @@ The following systems are working correctly and should NOT be modified:
 - **Database Models**: All Mongoose models are functional
 - **API Routes**: Route definitions are correct
 - **Validation**: Input validation schemas work properly
+
+## Tournament Management Endpoints
+
+**Note**: The tests expect these tournament management endpoints to be implemented. You'll need to create these as part of the assessment:
+
+### Create Tournament
+- **POST** `/api/tournaments`
+- **Headers**: `X-API-Key: test-api-key-123-user1` or `Authorization: Bearer <token>`
+- **Body**: 
+  ```json
+  {
+    "name": "Tournament Name",
+    "max_rounds": 5,
+    "tournament_active_time": 30
+  }
+  ```
+- **Response (201)**:
+  ```json
+  {
+    "tournament": {
+      "id": "68f686043ac9ea1dbe06308b",
+      "name": "Tournament Name",
+      "status": "live",
+      "max_rounds": 5,
+      "next_round": 1,
+      "tournament_ends_in": "2h 30m 45s"
+    }
+  }
+  ```
+
+### List Live Tournaments  
+- **GET** `/api/tournaments/live`
+- **Headers**: `X-API-Key: test-api-key-123-user1` or `Authorization: Bearer <token>`
+- **Response (200)**:
+  ```json
+  {
+    "tournaments": [
+      {
+        "id": "68f686043ac9ea1dbe06308b",
+        "name": "Tournament Name",
+        "max_rounds": 5,
+        "next_round": 1,
+        "tournament_ends_in": "2h 30m 45s"
+      }
+    ]
+  }
+  ```
+- **Note**: Auto-completes expired tournaments (moves them to completed status)
+
+### List Completed Tournaments
+- **GET** `/api/tournaments/completed`
+- **Headers**: `X-API-Key: test-api-key-123-user1` or `Authorization: Bearer <token>`
+- **Response (200)**:
+  ```json
+  {
+    "tournaments": [
+      {
+        "id": "68f686043ac9ea1dbe06308b",
+        "name": "Tournament Name",
+        "status": "completed",
+        "max_rounds": 5,
+        "rounds": [
+          {
+            "battleNumber": 1,
+            "attacker1": "pikachu",
+            "attacker2": "bulbasaur",
+            "winner": {
+              "name": "pikachu",
+              "remainingHp": 3
+            },
+            "createdAt": "2025-10-20T18:57:15.174Z"
+          }
+        ]
+      }
+    ]
+  }
+  ```
+
+### Get Tournament Results
+- **GET** `/api/tournaments/:id/results`
+- **Headers**: `X-API-Key: test-api-key-123-user1` or `Authorization: Bearer <token>`
+- **Response (200)**:
+  ```json
+  {
+    "tournament": {
+      "id": "68f686043ac9ea1dbe06308b",
+      "name": "Tournament Name",
+      "status": "completed",
+      "maxRounds": 5,
+      "rounds": [
+        {
+          "battleNumber": 1,
+          "attacker1": "pikachu",
+          "attacker2": "bulbasaur",
+          "winner": {
+            "name": "pikachu",
+            "remainingHp": 3
+          },
+          "createdAt": "2025-10-20T18:57:15.174Z"
+        }
+      ]
+    }
+  }
+  ```
+
+**Important Notes**:
+- Battle responses show Pokemon names as simple strings (e.g., `"attacker1": "pikachu"`) rather than objects with IDs
+- `tournament_ends_in` should be in human-readable format: "2h 30m 45s", "45m 30s", "30s", or "Expired"
+- Expired tournaments are automatically moved to "completed" status
+- All endpoints require authentication via API key or JWT token
+
+## Additional API Endpoints
+
+### Pokemon List
+- **GET** `/api/pokemon/list`
+- **Headers**: `X-API-Key: test-api-key-123-user1` or `Authorization: Bearer <token>`
+- **Query Parameters**:
+  - `page` (optional): Page number (default: 1, min: 1)
+  - `limit` (optional): Items per page (default: 20, min: 1, max: 100)
+  - `type` (optional): Filter by Pokemon type (e.g., "fire", "water")
+  - `generation` (optional): Filter by generation (1-8)
+  - `minStats` (optional): Minimum total stats
+  - `maxStats` (optional): Maximum total stats
+  - `sortBy` (optional): Sort field ("name", "height", "weight", "base_experience")
+  - `sortOrder` (optional): Sort order ("asc" or "desc")
+- **Response (200)**:
+  ```json
+  {
+    "data": [
+      {
+        "id": 25,
+        "name": "pikachu",
+        "height": 4,
+        "weight": 60,
+        "base_experience": 112,
+        "types": ["electric"]
+      }
+    ],
+    "pagination": {
+      "page": 1,
+      "limit": 20,
+      "total": 100,
+      "pages": 5
+    },
+    "cached": false,
+    "executionTime": 150
+  }
+  ```
+
+### User Registration
+- **POST** `/api/auth/register`
+- **Body**:
+  ```json
+  {
+    "username": "testuser",
+    "password": "Password123!"
+  }
+  ```
+- **Response (201)**:
+  ```json
+  {
+    "user": {
+      "id": "68f686043ac9ea1dbe06308b",
+      "username": "testuser",
+      "createdAt": "2025-10-20T18:57:15.174Z"
+    }
+  }
+  ```
+
+### User Login
+- **POST** `/api/auth/login`
+- **Body**:
+  ```json
+  {
+    "username": "testuser",
+    "password": "Password123!"
+  }
+  ```
+- **Response (200)**:
+  ```json
+  {
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "user": {
+      "id": "68f686043ac9ea1dbe06308b",
+      "username": "testuser"
+    }
+  }
+  ```
+
+## Error Response Formats
+
+### Common Error Responses
+- **400 Bad Request**:
+  ```json
+  {
+    "message": "Invalid input data",
+    "details": "Validation error details"
+  }
+  ```
+
+- **401 Unauthorized**:
+  ```json
+  {
+    "message": "Authentication required"
+  }
+  ```
+
+- **404 Not Found**:
+  ```json
+  {
+    "message": "Tournament not found"
+  }
+  ```
+
+- **429 Too Many Requests**:
+  ```json
+  {
+    "message": "Rate limit exceeded"
+  }
+  ```
+
+- **500 Internal Server Error**:
+  ```json
+  {
+    "message": "Internal server error"
+  }
+  ```
+
+## Validation Requirements
+
+### Tournament Creation
+- `name`: Required string, trimmed
+- `max_rounds`: Required number, min: 1, max: 20
+- `tournament_active_time`: Optional number, min: 1, max: 1440 (minutes)
+
+### Battle Simulation
+- `attacker`: Required string (Pokemon name)
+- `defender`: Required string (Pokemon name)
+- Cannot battle same Pokemon
+
+### User Registration/Login
+- `username`: Required string, trimmed
+- `password`: Required string with complexity (uppercase, number, special character)
+
+### Pokemon List Query
+- `page`: Optional number, min: 1
+- `limit`: Optional number, min: 1, max: 100
+- `type`: Optional string (lowercase)
+- `generation`: Optional number, min: 1, max: 8
+- `sortBy`: Optional string ("name", "height", "weight", "base_experience")
+- `sortOrder`: Optional string ("asc", "desc")
+
+## Edge Cases and Error Scenarios
+
+### Authentication Edge Cases
+- **Missing API Key**: Returns 401 "Authentication required"
+- **Invalid API Key**: Returns 401 "Authentication required"
+- **Missing JWT Token**: Returns 401 "Authentication required"
+- **Invalid JWT Token**: Returns 401 "Authentication required"
+- **Expired JWT Token**: Returns 401 "Authentication required"
+
+### Tournament Edge Cases
+- **Create Tournament**:
+  - Invalid `max_rounds` (outside 1-20 range): 400 validation error
+  - Invalid `tournament_active_time` (outside 1-1440 range): 400 validation error
+  - Missing required fields: 400 validation error
+
+- **Battle Simulation**:
+  - Same Pokemon for attacker and defender: 400 "Cannot battle the same Pokemon"
+  - Tournament not found: 404 "Tournament not found"
+  - Tournament not live: 400 "Tournament is not live"
+  - Tournament ended by time: 400 "Tournament has ended"
+  - Tournament reached max rounds: 400 "Tournament round limit reached"
+  - Invalid Pokemon names: 400 validation error
+  - Missing attacker/defender: 400 validation error
+
+- **Tournament Status**:
+  - Expired tournaments auto-complete to "completed" status
+  - Live tournaments show `tournament_ends_in` in human-readable format
+  - Completed tournaments show detailed battle information
+
+### Pokemon List Edge Cases
+- **Invalid Query Parameters**:
+  - Invalid `page` (less than 1): 400 validation error
+  - Invalid `limit` (outside 1-100 range): 400 validation error
+  - Invalid `generation` (outside 1-8 range): 400 validation error
+  - Invalid `sortBy` (not in allowed values): 400 validation error
+  - Invalid `sortOrder` (not "asc" or "desc"): 400 validation error
+
+### Rate Limiting Edge Cases
+- **Rate Limit Exceeded**: 429 "Rate limit exceeded" with headers:
+  - `X-RateLimit-Limit`: Maximum requests allowed
+  - `X-RateLimit-Remaining`: Requests remaining in current window
+  - `X-RateLimit-Reset`: Time when limit resets
+
+### Caching Edge Cases
+- **Cache Miss**: First request shows `cached: false`
+- **Cache Hit**: Subsequent identical requests show `cached: true`
+- **Cache Expiry**: Expired cache entries are automatically refreshed
+
+### Database Edge Cases
+- **User Registration**:
+  - Duplicate username: 409 "Username already exists"
+  - Weak password: 400 validation error
+  - Missing required fields: 400 validation error
+
+- **User Login**:
+  - Invalid credentials: 401 "Invalid credentials"
+  - User not found: 401 "Invalid credentials"
+
+### System Edge Cases
+- **Server Errors**: 500 "Internal server error" for unexpected failures
+- **Network Timeouts**: Handle gracefully with appropriate error messages
+- **Database Connection Issues**: Return 500 with error message
 
 ## Assessment Tasks (Complete in Order)
 
@@ -565,24 +889,107 @@ npm test
 7. **Database Test**: Should store and retrieve data correctly with proper schemas
 
 ### Manual Testing
-1. **Test Broken Systems**:
-   ```bash
-   node test-broken-systems.js
-   ```
-   This will show you the current broken behavior of all systems.
 
-2. **Test Individual Components**:
-   ```bash
-   # Test Authentication
-   curl -H "X-API-Key: test-api-key-123-user1" http://localhost:3000/api/pokemon/list
-   
-   # Test Rate Limiting (after fixing auth)
-   # Make multiple requests quickly - should eventually get 429 error
-   
-   # Test Caching (after fixing other systems)
-   # First request should be slow (uncached)
-   # Second identical request should be fast (cached)
-   ```
+#### 1. Test Authentication
+```bash
+# Test with API Key
+curl -H "X-API-Key: test-api-key-123-user1" http://localhost:3000/api/pokemon/list
+
+# Test with JWT Token (after login)
+curl -H "Authorization: Bearer <your-jwt-token>" http://localhost:3000/api/pokemon/list
+```
+
+#### 2. Test User Registration and Login
+```bash
+# Register a new user
+curl -X POST http://localhost:3000/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"username": "testuser", "password": "Password123!"}'
+
+# Login
+curl -X POST http://localhost:3000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username": "testuser", "password": "Password123!"}'
+```
+
+#### 3. Test Tournament Management
+```bash
+# Create a tournament
+curl -X POST http://localhost:3000/api/tournaments \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: test-api-key-123-user1" \
+  -d '{"name": "Test Tournament", "max_rounds": 3, "tournament_active_time": 10}'
+
+# List live tournaments
+curl -H "X-API-Key: test-api-key-123-user1" http://localhost:3000/api/tournaments/live
+
+# List completed tournaments
+curl -H "X-API-Key: test-api-key-123-user1" http://localhost:3000/api/tournaments/completed
+
+# Get tournament results
+curl -H "X-API-Key: test-api-key-123-user1" http://localhost:3000/api/tournaments/<tournament-id>/results
+```
+
+#### 4. Test Battle Simulation
+```bash
+# Add a battle to tournament
+curl -X POST http://localhost:3000/api/tournaments/<tournament-id>/battle \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: test-api-key-123-user1" \
+  -d '{"attacker": "pikachu", "defender": "bulbasaur"}'
+```
+
+#### 5. Test Pokemon List with Filtering
+```bash
+# Basic list
+curl -H "X-API-Key: test-api-key-123-user1" "http://localhost:3000/api/pokemon/list"
+
+# With filtering and pagination
+curl -H "X-API-Key: test-api-key-123-user1" "http://localhost:3000/api/pokemon/list?type=fire&generation=1&page=1&limit=10&sortBy=name&sortOrder=asc"
+```
+
+#### 6. Test Rate Limiting
+```bash
+# Make multiple requests quickly - should eventually get 429 error
+for i in {1..105}; do
+  curl -H "X-API-Key: test-api-key-123-user1" http://localhost:3000/api/pokemon/list
+done
+```
+
+#### 7. Test Caching
+```bash
+# First request should be slow (uncached)
+time curl -H "X-API-Key: test-api-key-123-user1" "http://localhost:3000/api/pokemon/list?type=fire"
+
+# Second identical request should be fast (cached)
+time curl -H "X-API-Key: test-api-key-123-user1" "http://localhost:3000/api/pokemon/list?type=fire"
+```
+
+#### 8. Test Edge Cases
+```bash
+# Test same Pokemon battle (should fail)
+curl -X POST http://localhost:3000/api/tournaments/<tournament-id>/battle \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: test-api-key-123-user1" \
+  -d '{"attacker": "pikachu", "defender": "pikachu"}'
+
+# Test invalid tournament ID
+curl -X POST http://localhost:3000/api/tournaments/invalid-id/battle \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: test-api-key-123-user1" \
+  -d '{"attacker": "pikachu", "defender": "bulbasaur"}'
+
+# Test invalid Pokemon list parameters
+curl -H "X-API-Key: test-api-key-123-user1" "http://localhost:3000/api/pokemon/list?page=0&limit=200&sortBy=invalid"
+
+# Test missing authentication
+curl http://localhost:3000/api/pokemon/list
+
+# Test invalid user registration
+curl -X POST http://localhost:3000/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"username": "test", "password": "weak"}'
+```
 
 ## 📊 Expected System Behavior
 
@@ -666,7 +1073,7 @@ Your implementation is successful when:
 4. Check database operations work correctly
 
 ### Step 4: Final Verification
-1. All 7 tasks completed successfully
+1. All 8 tasks completed successfully
 2. All tests passing
 3. No broken system error messages
 4. API endpoints working with proper authentication
@@ -703,9 +1110,38 @@ Your implementation is successful when:
 1. **Clone the repository**
 2. **Install dependencies**: `npm install`
 3. **Set up environment variables** (see `.env.example`)
-4. **Start fixing systems** in order (Task 1 → Task 7)
+4. **Start fixing systems** in order (Task 1 → Task 8)
 5. **Test frequently** with `npm test`
-6. **Submit your working solution**
+6. **Submit your working solution`
+
+## Complete API Reference Summary
+
+### Endpoints Overview
+| Method | Endpoint | Description | Auth Required |
+|--------|----------|-------------|---------------|
+| POST | `/api/auth/register` | User registration | No |
+| POST | `/api/auth/login` | User login | No |
+| GET | `/api/pokemon/list` | Pokemon list with filtering | Yes |
+| POST | `/api/tournaments` | Create tournament | Yes |
+| GET | `/api/tournaments/live` | List live tournaments | Yes |
+| GET | `/api/tournaments/completed` | List completed tournaments | Yes |
+| GET | `/api/tournaments/:id/results` | Get tournament results | Yes |
+| POST | `/api/tournaments/:id/battle` | Add battle to tournament | Yes |
+
+### Key Response Formats
+- **Tournament Creation**: Returns tournament with `tournament_ends_in` in human-readable format
+- **Battle Responses**: Pokemon names as simple strings (`"attacker1": "pikachu"`)
+- **Tournament Lists**: Auto-complete expired tournaments to "completed" status
+- **Pokemon List**: Include pagination, caching status, and execution time
+- **Error Responses**: Consistent JSON format with appropriate HTTP status codes
+
+### Critical Requirements
+- All endpoints require authentication (API key or JWT token)
+- Time formatting: "2h 30m 45s", "45m 30s", "30s", or "Expired"
+- Auto-complete expired tournaments
+- Battle details show only essential information
+- Proper validation for all inputs
+- Rate limiting and caching implementation
 
 ## Additional Resources
 
