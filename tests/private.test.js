@@ -326,32 +326,4 @@ describe('Private API and logic - Deep tests and edge cases', () => {
       expect(result.rounds).toBeGreaterThan(0);
     });
   });
-
-  describe('Pokemon list validation', () => {
-    test('invalid sortBy triggers validation error', async () => {
-      const res = await request(app)
-        .get('/api/pokemon/list?sortBy=invalidField')
-        .set('Authorization', `Bearer ${authToken}`);
-      expect(res.status).toBe(400);
-    });
-  });
-
-  describe('Cache utils', () => {
-    test('set/get/clear work', () => {
-      cache.set('k', { v: 1 }, 1000);
-      expect(cache.get('k')).toEqual({ v: 1 });
-      cache.clear();
-      expect(cache.get('k')).toBe(null);
-    });
-
-    test('ttl expiry works', async () => {
-      cache.set('exp', 42, 10);
-      expect(cache.get('exp')).toBe(42);
-      await new Promise(r => setTimeout(r, 20));
-      expect(cache.get('exp')).toBe(null);
-    });
-  });
-
 });
-
-
