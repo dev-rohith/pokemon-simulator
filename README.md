@@ -42,6 +42,7 @@ You are tasked with completing a Pokemon Battle Simulator system built with Java
 - Document any assumptions or design decisions made.
 - Push the code to github `dev` branch.
 - Raise a PR to `main` branch.
+- Don't merge the pr this will help us review code
 - Finally click on the submission button.
 - Complete the implementation within the given timeframe - 3 days.
 
@@ -56,7 +57,9 @@ Authenticated users can:
 3. Simulate Pokemon battles
 4. Access Pokemon data with advanced filtering
 
-## Setup Instructions
+## Local Setup Instructions
+- Download MongoDB for local DataBase connection or run it on an Atlas cluster.
+- give the connection string in the .env file to connect to database.
 
 ```bash
 npm install        # Install all project dependencies
@@ -330,6 +333,7 @@ Fix existing issues and implement missing Pokemon Battle Simulator features in t
 ### 3.3 Implementation Details
 
 #### Battle Algorithm Strategy
+-  which is already implemented no need to worry about this
 - **Turn Order**: Compare Pokemon speed stats, higher speed attacks first
 - **Damage Calculation**: (attacker.attack - defender.defense) + random(1-10)
 - **Minimum Damage**: Ensure at least 1 damage per attack
@@ -340,50 +344,19 @@ Fix existing issues and implement missing Pokemon Battle Simulator features in t
 
 ### 4.1 Filter by Type
 
-**Endpoint**: `GET /api/pokemon?type=fire`
-
-### 4.2 Filter by Generation
-
-**Endpoint**: `GET /api/pokemon?generation=1`
-
-### 4.3 Filter by Stats
-
-**Endpoint**: `GET /api/pokemon?minStats=500&maxStats=700`
+**Endpoint**: `GET /api/pokemon?page=1&limit=5`
+- this will be query for external api call
 
 ### 4.4 Sort Pokemon
 
 **Endpoint**: `GET /api/pokemon?sortBy=name&sortOrder=asc`
-
+-  this will be local filtering onece you fetch pokemons with pagination right you need to sort this using locally on that datasets.
+- dont use sort logic on the external api level.
 **Available Sort Fields**:
+- `id` (numeric)
 - `name` (alphabetical)
-- `height` (numerical)
-- `weight` (numerical)
-- `base_experience` (numerical)
-
 **Sort Orders**: `asc` or `desc`
 
-### 4.5 Combined Filters
-
-**Endpoint**: `GET /api/pokemon?type=water&generation=1&sortBy=name&sortOrder=asc&limit=10`
-
-### 4.6 Implementation Details
-
-#### Filtering Strategy
-- **Type Filtering**: Check if Pokemon.types array includes the filter type
-- **Generation Filtering**: Use Pokemon ID ranges (Gen 1: 1-151, Gen 2: 152-251, etc.)
-- **Stats Filtering**: Compare Pokemon.stats.total against minStats/maxStats
-- **Client-Side Processing**: Apply filters after fetching all Pokemon data
-- **Case Sensitivity**: Convert filter values to lowercase for type matching
-
-#### Generation ID Ranges
-- **Generation 1**: Pokemon IDs 1-151
-- **Generation 2**: Pokemon IDs 152-251
-- **Generation 3**: Pokemon IDs 252-386
-- **Generation 4**: Pokemon IDs 387-493
-- **Generation 5**: Pokemon IDs 494-649
-- **Generation 6**: Pokemon IDs 650-721
-- **Generation 7**: Pokemon IDs 722-809
-- **Generation 8**: Pokemon IDs 810+
 
 ## Task 5: Error Handling & Validation
 
@@ -447,11 +420,7 @@ Fix existing issues and implement missing Pokemon Battle Simulator features in t
 
 ### 8.1 Test Implementation
 
-- **Unit Tests**: Test individual functions and services
-- **Integration Tests**: Test API endpoints and database interactions
-- **Authentication Tests**: Test login, registration, and protected routes
-- **Battle Logic Tests**: Test battle simulation
-- **Error Handling Tests**: Test error scenarios and edge cases
+- **Unit Tests**: Test the implementation by running ```npm run test``` to see public testcases should pass for better outcomes.
 
 ## Environment Setup
 
