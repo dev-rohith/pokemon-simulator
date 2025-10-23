@@ -1,6 +1,7 @@
 const request = require('supertest');
 const app = require('../src/server');
 const cache = require('../src/utils/cache');
+const { calculateDamage, runBattle } = require('../src/controllers/battleController');
 
 let authToken = null;
 
@@ -37,7 +38,7 @@ describe('Private API and logic - Deep tests and edge cases', () => {
         types: ['normal'], 
         stats: { hp: 10, attack: 10, defense: 10, speed: 5 } 
       };
-      const result = simulateBattle(a, b);
+      const result = runBattle(a, b);
       expect(result).toHaveProperty('winner');
       expect(result).toHaveProperty('loser');
       expect(result).toHaveProperty('rounds');
