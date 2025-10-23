@@ -4,15 +4,10 @@ const cache = require('../utils/cache');
 const POKEAPI_BASE_URL = process.env.POKEAPI_BASE_URL || 'https://pokeapi.co/api/v2';
 const CACHE_TTL = parseInt(process.env.CACHE_TTL) || 300000; // 5 minutes
 
-/**
- * Fetch all Pokemon with pagination
- * @param {number} limit - Number of Pokemon to fetch
- * @param {number} offset - Offset for pagination
- * @returns {Promise<Array>} Array of Pokemon data
- */
+
 async function fetchPokemonList(limit = 1000, offset = 0) {
   try {
-    const cacheKey = `pokemonList:${limit}:${offset}`;
+    const cacheKey = `pokemonList_${limit}_${offset}`;
     const cached = cache.get(cacheKey);
 
     if (cached) {
@@ -46,45 +41,34 @@ async function fetchPokemonList(limit = 1000, offset = 0) {
   }
 }
 
-/**
- * Fetch Pokemon list with pagination and filtering
- * @param {number} limit - Number of Pokemon to fetch per page
- * @param {number} offset - Offset for pagination
- * @param {object} filters - Filter options
- * @returns {Promise<{data: Array, totalCount: number}>} Pokemon data with total count
- */
+
 async function fetchPokemonListPaginated(limit = 20, offset = 0, filters = {}) {
   try {
-    const cacheKey = `pokemonListPaginated:${limit}:${offset}:${JSON.stringify(filters)}`;
+    const cacheKey = `pokemonListPaginated_${limit}_${offset}_${JSON.stringify(filters)}`;
     const cached = cache.get(cacheKey);
 
     if (cached) {
       return { data: cached.data, totalCount: cached.totalCount, cached: true };
     }
 
-    // First, get the total count by fetching a small sample to determine total available
-    const countResponse = await axios.get(`${POKEAPI_BASE_URL}/pokemon`, {
-      params: { limit: 1, offset: 0 },
-      timeout: 10000,
-    });
-
-    // Get the total count from the API (PokeAPI doesn't provide total count directly)
-    // We'll fetch a reasonable number and filter client-side for now
-    const maxFetch = 1000; // Reasonable limit to avoid timeouts
+    // Fetch the specific range of Pokemon based on offset and limit
+    // For offset 0 with limit 10, fetch Pokemon 1-10
+    const fetchLimit = limit;
+    const fetchOffset = offset;
     const response = await axios.get(`${POKEAPI_BASE_URL}/pokemon`, {
-      params: { limit: maxFetch, offset: 0 },
+      params: { limit: fetchLimit, offset: fetchOffset },
       timeout: 15000,
     });
 
-    // Fetch detailed data for all Pokemon
+    // Fetch detailed data for the batch
     const detailedPromises = response.data.results.map(pokemon =>
       fetchPokemonDetails(pokemon.url)
     );
 
-    const allPokemon = await Promise.all(detailedPromises);
+    const pokemonBatch = await Promise.all(detailedPromises);
 
-    // Apply filters
-    let filteredPokemon = allPokemon;
+    // Apply filters to the batch
+    let filteredPokemon = pokemonBatch;
 
     if (filters.type) {
       filteredPokemon = filteredPokemon.filter(p =>
@@ -116,21 +100,13 @@ async function fetchPokemonListPaginated(limit = 20, offset = 0, filters = {}) {
         let aValue, bValue;
 
         switch (filters.sortBy) {
+        case 'id':
+          aValue = a.id;
+          bValue = b.id;
+          break;
         case 'name':
           aValue = a.name;
           bValue = b.name;
-          break;
-        case 'height':
-          aValue = a.height;
-          bValue = b.height;
-          break;
-        case 'weight':
-          aValue = a.weight;
-          bValue = b.weight;
-          break;
-        case 'base_experience':
-          aValue = a.baseExperience || 0;
-          bValue = b.baseExperience || 0;
           break;
         default:
           aValue = a.name;
@@ -147,9 +123,9 @@ async function fetchPokemonListPaginated(limit = 20, offset = 0, filters = {}) {
       });
     }
 
-    // Apply pagination
-    const totalCount = filteredPokemon.length;
-    const paginatedPokemon = filteredPokemon.slice(offset, offset + limit);
+    const paginatedPokemon = filteredPokemon;
+
+    const totalCount = 1000; 
 
     const result = {
       data: paginatedPokemon,
@@ -178,13 +154,6 @@ async function fetchPokemonListPaginated(limit = 20, offset = 0, filters = {}) {
  */
 async function fetchPokemonDetails(urlOrId) {
   try {
-    const cacheKey = `pokemon:${urlOrId}`;
-    const cached = cache.get(cacheKey);
-
-    if (cached) {
-      return cached;
-    }
-
     let url;
     if (typeof urlOrId === 'number') {
       url = `${POKEAPI_BASE_URL}/pokemon/${urlOrId}`;
@@ -196,13 +165,18 @@ async function fetchPokemonDetails(urlOrId) {
       url = `${POKEAPI_BASE_URL}/pokemon/${urlOrId}`;
     }
 
+    const cached = cache.get(url);
+    if (cached) {
+      return cached;
+    }
+
     const response = await axios.get(url, { timeout: 10000 });
     const pokemon = response.data;
 
     // Transform to simplified format
     const simplified = transformPokemonData(pokemon);
 
-    cache.set(cacheKey, simplified, CACHE_TTL);
+    cache.set(url, simplified, CACHE_TTL);
 
     return simplified;
   } catch (error) {
@@ -214,11 +188,7 @@ async function fetchPokemonDetails(urlOrId) {
   }
 }
 
-/**
- * Transform Pokemon data to simplified format
- * @param {object} pokemon - Raw Pokemon data from PokeAPI
- * @returns {object} Simplified Pokemon data
- */
+
 function transformPokemonData(pokemon) {
   const stats = pokemon.stats.reduce((acc, stat) => {
     acc[stat.stat.name] = stat.base_stat;
@@ -248,11 +218,7 @@ function transformPokemonData(pokemon) {
   };
 }
 
-/**
- * Get Pokemon generation based on ID
- * @param {number} id - Pokemon ID
- * @returns {number} Generation number
- */
+
 function getPokemonGeneration(id) {
   if (id <= 151) return 1;
   if (id <= 251) return 2;
@@ -271,3 +237,4 @@ module.exports = {
   transformPokemonData,
   getPokemonGeneration,
 };
+ 

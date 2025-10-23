@@ -271,9 +271,11 @@ Fix existing issues and implement missing Pokemon Battle Simulator features in t
 }
 ```
 
-### 3.2 List All Battles
+### 3.2 List User's Battles
 
 **Endpoint**: `GET /api/battle`
+
+**Headers**: `Authorization: Bearer <token>`
 
 **Expected Output**:
 ```json
@@ -292,6 +294,8 @@ Fix existing issues and implement missing Pokemon Battle Simulator features in t
   "executionTime": 96
 }
 ```
+
+**Note**: Returns only battles created by the authenticated user.
 
 ### 3.3 Implementation Details
 
@@ -539,7 +543,7 @@ RATE_LIMIT_MAX_REQUESTS=100
 | `/api/pokemon` | `GET` | List Pokemon with filters | Support pagination, filtering, sorting | `200 OK` + Pokemon array + pagination |
 | `/api/pokemon/:name` | `GET` | Get Pokemon details | Validate Pokemon name | `200 OK` + Pokemon details |
 | `/api/battle` | `POST` | Simulate battle | Validate Pokemon data, simulate battle | `200 OK` + battle result |
-| `/api/battle` | `GET` | List all battles | Return all battles sorted by newest | `200 OK` + battles array |
+| `/api/battle` | `GET` | List user's battles | Return user's battles sorted by newest | `200 OK` + battles array |
 | `/api/tournaments` | `POST` | Create tournament | Validate input, set defaults | `201 Created` + tournament object |
 | `/api/tournaments/live` | `GET` | List live tournaments | Return live tournaments only | `200 OK` + tournaments array |
 | `/api/tournaments/completed` | `GET` | List completed tournaments | Return completed tournaments only | `200 OK` + tournaments array |

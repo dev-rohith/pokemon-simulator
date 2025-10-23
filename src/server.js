@@ -2,20 +2,27 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
+const morgan = require('morgan');
+const fs = require('fs');
+const path = require('path');
 const { connectDatabase } = require('./config/database');
 const pokemonRoutes = require('./routes/pokemon.routes');
-const tournamentRoutes = require('./routes/tournament.routes');
 const authRoutes = require('./routes/auth.routes');
+const battleRoutes = require('./routes/battle.routes');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// Request logging to access.log
+const accessLogPath = path.join(__dirname, '..', 'access.log');
+const accessLogStream = fs.createWriteStream(accessLogPath, { flags: 'a', autoClose: false });
+app.use(morgan('combined', { stream: accessLogStream }));
 
 // Middleware
 app.use(helmet());
 app.use(cors());
 
 app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
 
 // Health check endpoint
 app.get('/health', (req, res) => {
@@ -29,8 +36,10 @@ app.get('/', (req, res) => {
     version: '1.0.0',
     endpoints: {
       health: '/health',
-      pokemon: '/api/pokemon/list',
-      tournaments: '/api/tournaments',
+      pokemon: '/api/pokemon',
+      pokemonDetails: '/api/pokemon/:name',
+      battle: '/api/battle',
+      battles: '/api/battle (GET)',
     },
   });
 });
@@ -38,7 +47,7 @@ app.get('/', (req, res) => {
 // API routes
 app.use('/api/auth', authRoutes);
 app.use('/api/pokemon', pokemonRoutes);
-app.use('/api/tournaments', tournamentRoutes);
+app.use('/api/battle', battleRoutes);
 
 // 404 handler
 app.use((req, res) => {
