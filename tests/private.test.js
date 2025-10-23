@@ -1,9 +1,7 @@
 const request = require('supertest');
 const app = require('../src/server');
 const { calculateDamage, simulateBattle } = require('../src/services/battle.service');
-const { TYPE_CHART, calculateTypeEffectiveness } = require('../src/utils/typeEffectiveness');
 const cache = require('../src/utils/cache');
-const Tournament = require('../src/models/Tournament');
 
 // JWT token will be obtained through login
 let authToken = null;
@@ -11,9 +9,6 @@ let authToken = null;
 describe('Private API and logic - Deep tests and edge cases', () => {
   // Setup: Register and login to get JWT token
   beforeAll(async () => {
-    const request = require('supertest');
-    const app = require('../src/server');
-    
     // Register a test user
     await request(app)
       .post('/api/auth/register')
@@ -34,296 +29,306 @@ describe('Private API and logic - Deep tests and edge cases', () => {
       expect(calculateDamage(atk, def, 1)).toBe(1);
     });
 
-    test('simulateBattle logs rounds consistently', () => {
-      const a = { id: 1, name: 'a', types: ['normal'], stats: { hp: 10, attack: 10, defense: 10, speed: 10 } };
-      const b = { id: 2, name: 'b', types: ['normal'], stats: { hp: 10, attack: 10, defense: 10, speed: 5 } };
-      const r = simulateBattle(a, b);
-      expect(r.rounds).toBe(r.battleLog.length);
-      expect(r.winner).toBeDefined();
+    test('simulateBattle returns valid result', () => {
+      const a = { 
+        id: 1, 
+        name: 'a', 
+        types: ['normal'], 
+        stats: { hp: 10, attack: 10, defense: 10, speed: 10 } 
+      };
+      const b = { 
+        id: 2, 
+        name: 'b', 
+        types: ['normal'], 
+        stats: { hp: 10, attack: 10, defense: 10, speed: 5 } 
+      };
+      const result = simulateBattle(a, b);
+      expect(result).toHaveProperty('winner');
+      expect(result).toHaveProperty('loser');
+      expect(result).toHaveProperty('rounds');
+      expect(result).toHaveProperty('battleLog');
+      expect(Array.isArray(result.battleLog)).toBe(true);
+      expect(result.rounds).toBe(result.battleLog.length);
     });
   });
 
-  describe('Type effectiveness', () => {
-    test('no-effect edge case', () => {
-      expect(calculateTypeEffectiveness('normal', ['ghost'])).toBe(0);
+  describe('Battle API', () => {
+    test('simulate battle with valid Pokemon data', async () => {
+      const battleData = {
+        attacker1: {
+          name: 'charizard',
+          stats: {
+            hp: 78,
+            attack: 84,
+            defense: 78,
+            specialAttack: 109,
+            specialDefense: 85,
+            speed: 100,
+            total: 534
+          }
+        },
+        attacker2: {
+          name: 'pikachu',
+          stats: {
+            hp: 35,
+            attack: 55,
+            defense: 40,
+            specialAttack: 50,
+            specialDefense: 50,
+            speed: 90,
+            total: 320
+          }
+        }
+      };
+
+      const res = await request(app)
+        .post('/api/battle')
+        .set('Authorization', `Bearer ${authToken}`)
+        .send(battleData);
+
+      expect(res.status).toBe(200);
+      expect(res.body.message).toBe('Battle completed successfully');
+      expect(res.body.battle).toBeDefined();
+      expect(res.body.battle).toHaveProperty('id');
+      expect(res.body.battle).toHaveProperty('attacker1', 'charizard');
+      expect(res.body.battle).toHaveProperty('attacker2', 'pikachu');
+      expect(res.body.battle).toHaveProperty('winner');
+      expect(res.body.battle).toHaveProperty('createdAt');
+    });
+
+    test('battle API requires authentication', async () => {
+      const battleData = {
+        attacker1: {
+          name: 'charizard',
+          stats: {
+            hp: 78, attack: 84, defense: 78,
+            specialAttack: 109, specialDefense: 85, speed: 100, total: 534
+          }
+        },
+        attacker2: {
+          name: 'pikachu',
+          stats: {
+            hp: 35, attack: 55, defense: 40,
+            specialAttack: 50, specialDefense: 50, speed: 90, total: 320
+          }
+        }
+      };
+
+      const res = await request(app)
+        .post('/api/battle')
+        .send(battleData);
+
+      expect(res.status).toBe(401);
+    });
+
+    test('battle API validation - missing attacker1', async () => {
+      const res = await request(app)
+        .post('/api/battle')
+        .set('Authorization', `Bearer ${authToken}`)
+        .send({
+          attacker2: {
+            name: 'pikachu',
+            stats: { hp: 35, attack: 55, defense: 40, specialAttack: 50, specialDefense: 50, speed: 90, total: 320 }
+          }
+        });
+
+      expect(res.status).toBe(400);
+      expect(res.body.message).toBe('Invalid input data');
+      expect(Array.isArray(res.body.errors)).toBe(true);
+    });
+
+    test('battle API validation - missing stats', async () => {
+      const res = await request(app)
+        .post('/api/battle')
+        .set('Authorization', `Bearer ${authToken}`)
+        .send({
+          attacker1: { name: 'charizard' },
+          attacker2: {
+            name: 'pikachu',
+            stats: { hp: 35, attack: 55, defense: 40, specialAttack: 50, specialDefense: 50, speed: 90, total: 320 }
+          }
+        });
+
+      expect(res.status).toBe(400);
+      expect(res.body.message).toBe('Invalid input data');
+      expect(Array.isArray(res.body.errors)).toBe(true);
+    });
+
+    test('battle API validation - invalid stats type', async () => {
+      const res = await request(app)
+        .post('/api/battle')
+        .set('Authorization', `Bearer ${authToken}`)
+        .send({
+          attacker1: {
+            name: 'charizard',
+            stats: { hp: 'invalid', attack: 84, defense: 78, specialAttack: 109, specialDefense: 85, speed: 100, total: 534 }
+          },
+          attacker2: {
+            name: 'pikachu',
+            stats: { hp: 35, attack: 55, defense: 40, specialAttack: 50, specialDefense: 50, speed: 90, total: 320 }
+          }
+        });
+
+      expect(res.status).toBe(400);
+      expect(res.body.message).toBe('Invalid input data');
+      expect(Array.isArray(res.body.errors)).toBe(true);
+    });
+
+    test('battle API validation - missing required stats', async () => {
+      const res = await request(app)
+        .post('/api/battle')
+        .set('Authorization', `Bearer ${authToken}`)
+        .send({
+          attacker1: {
+            name: 'charizard',
+            stats: { hp: 78, attack: 84, defense: 78, specialAttack: 109, specialDefense: 85, speed: 100 }
+            // missing total
+          },
+          attacker2: {
+            name: 'pikachu',
+            stats: { hp: 35, attack: 55, defense: 40, specialAttack: 50, specialDefense: 50, speed: 90, total: 320 }
+          }
+        });
+
+      expect(res.status).toBe(400);
+      expect(res.body.message).toBe('Invalid input data');
+      expect(Array.isArray(res.body.errors)).toBe(true);
     });
   });
 
-  describe('Tournament battle edge cases', () => {
-    test('missing battle fields', async () => {
-      // First create a tournament
-      const create = await request(app)
-        .post('/api/tournaments')
-        .set('Authorization', `Bearer ${authToken}`)
-        .send({ name: 'Test Cup', max_rounds: 1 });
-      const id = create.body.tournament.id;
+  describe('Battles Listing API', () => {
+    test('list battles requires authentication', async () => {
+      const res = await request(app).get('/api/battle');
+      expect(res.status).toBe(401);
+    });
 
+    test('list battles returns all battles', async () => {
+      // First create a battle
+      const battleData = {
+        attacker1: {
+          name: 'blastoise',
+          stats: {
+            hp: 79, attack: 83, defense: 100,
+            specialAttack: 85, specialDefense: 105, speed: 78, total: 530
+          }
+        },
+        attacker2: {
+          name: 'venusaur',
+          stats: {
+            hp: 80, attack: 82, defense: 83,
+            specialAttack: 100, specialDefense: 100, speed: 80, total: 525
+          }
+        }
+      };
+
+      await request(app)
+        .post('/api/battle')
+        .set('Authorization', `Bearer ${authToken}`)
+        .send(battleData);
+
+      // Then list battles
       const res = await request(app)
-        .post(`/api/tournaments/${id}/battle`)
-        .set('Authorization', `Bearer ${authToken}`)
-        .send({});
-      expect(res.status).toBe(400);
-    }, 30000);
+        .get('/api/battle')
+        .set('Authorization', `Bearer ${authToken}`);
 
-    test('same pokemon in battle', async () => {
-      // First create a tournament
-      const create = await request(app)
-        .post('/api/tournaments')
-        .set('Authorization', `Bearer ${authToken}`)
-        .send({ name: 'Test Cup 2', max_rounds: 1 });
-      const id = create.body.tournament.id;
+      expect(res.status).toBe(200);
+      expect(res.body).toHaveProperty('battles');
+      expect(res.body).toHaveProperty('total');
+      expect(res.body).toHaveProperty('cached');
+      expect(res.body).toHaveProperty('executionTime');
+      expect(Array.isArray(res.body.battles)).toBe(true);
+      expect(res.body.battles.length).toBeGreaterThan(0);
+      
+      // Check battle structure
+      const battle = res.body.battles[0];
+      expect(battle).toHaveProperty('_id');
+      expect(battle).toHaveProperty('attacker1');
+      expect(battle).toHaveProperty('attacker2');
+      expect(battle).toHaveProperty('winner');
+      expect(battle).toHaveProperty('createdAt');
+    });
 
+    test('list battles ignores query parameters', async () => {
       const res = await request(app)
-        .post(`/api/tournaments/${id}/battle`)
-        .set('Authorization', `Bearer ${authToken}`)
-        .send({ attacker: 'pikachu', defender: 'pikachu' });
-      expect(res.status).toBe(400);
-    }, 30000);
+        .get('/api/battle?page=2&limit=1&winner=charizard')
+        .set('Authorization', `Bearer ${authToken}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body).toHaveProperty('battles');
+      expect(Array.isArray(res.body.battles)).toBe(true);
+      // Should return all battles, not just one
+      expect(res.body.battles.length).toBeGreaterThan(0);
+    });
   });
 
-  describe('Tournament API edge cases', () => {
-    test('cannot add battle beyond max rounds', async () => {
-      const create = await request(app)
-        .post('/api/tournaments')
-        .set('Authorization', `Bearer ${authToken}`)
-        .send({ name: 'Limit Cup', max_rounds: 1 });
-      const id = create.body.tournament.id;
+  describe('Cache functionality', () => {
+    test('cache stores and retrieves data', () => {
+      const key = 'test-key';
+      const value = { test: 'data' };
+      
+      cache.set(key, value, 1000);
+      const retrieved = cache.get(key);
+      
+      expect(retrieved).toEqual(value);
+    });
 
-      const first = await request(app)
-        .post(`/api/tournaments/${id}/battle`)
-        .set('Authorization', `Bearer ${authToken}`)
-        .send({ attacker: 'pikachu', defender: 'bulbasaur' });
-      expect(first.status).toBe(201);
+    test('cache returns undefined for non-existent key', () => {
+      const retrieved = cache.get('non-existent-key');
+      expect(retrieved).toBeNull();
+    });
 
-      const second = await request(app)
-        .post(`/api/tournaments/${id}/battle`)
-        .set('Authorization', `Bearer ${authToken}`)
-        .send({ attacker: 'pikachu', defender: 'bulbasaur' });
-      expect(second.status).toBe(400);
-    }, 60000);
-
-    test('cannot add battle after tournament end time', async () => {
-      const create = await request(app)
-        .post('/api/tournaments')
-        .set('Authorization', `Bearer ${authToken}`)
-        .send({ name: 'Expired Cup', max_rounds: 3 });
-      const id = create.body.tournament.id;
-
-      // Force tournament to be expired
-      await Tournament.findByIdAndUpdate(id, { endTime: new Date(Date.now() - 1000), status: 'live' });
-
-      const res = await request(app)
-        .post(`/api/tournaments/${id}/battle`)
-        .set('Authorization', `Bearer ${authToken}`)
-        .send({ attacker: 'pikachu', defender: 'bulbasaur' });
-      expect(res.status).toBe(400);
-    }, 60000);
-
-    test('tournament auto-completion on time expiry', async () => {
-      const create = await request(app)
-        .post('/api/tournaments')
-        .set('Authorization', `Bearer ${authToken}`)
-        .send({ name: 'Time Expiry Cup', max_rounds: 5, tournament_active_time: 1 }); // 1 minute
-      const id = create.body.tournament.id;
-
-      // Wait for tournament to expire
-      await new Promise(resolve => setTimeout(resolve, 61000)); // Wait 61 seconds
-
-      const res = await request(app)
-        .post(`/api/tournaments/${id}/battle`)
-        .set('Authorization', `Bearer ${authToken}`)
-        .send({ attacker: 'pikachu', defender: 'bulbasaur' });
-      expect(res.status).toBe(400);
-      expect(res.body.message).toBe('Tournament has ended');
-    }, 70000);
-
-    test('tournament auto-completion on max rounds', async () => {
-      const create = await request(app)
-        .post('/api/tournaments')
-        .set('Authorization', `Bearer ${authToken}`)
-        .send({ name: 'Max Rounds Cup', max_rounds: 2, tournament_active_time: 30 });
-      const id = create.body.tournament.id;
-
-      // First battle
-      const battle1 = await request(app)
-        .post(`/api/tournaments/${id}/battle`)
-        .set('Authorization', `Bearer ${authToken}`)
-        .send({ attacker: 'pikachu', defender: 'bulbasaur' });
-      expect(battle1.status).toBe(201);
-
-      // Second battle
-      const battle2 = await request(app)
-        .post(`/api/tournaments/${id}/battle`)
-        .set('Authorization', `Bearer ${authToken}`)
-        .send({ attacker: 'charmander', defender: 'squirtle' });
-      expect(battle2.status).toBe(201);
-
-      // Third battle should fail
-      const battle3 = await request(app)
-        .post(`/api/tournaments/${id}/battle`)
-        .set('Authorization', `Bearer ${authToken}`)
-        .send({ attacker: 'eevee', defender: 'jigglypuff' });
-      expect(battle3.status).toBe(400);
-      expect(battle3.body.message).toBe('Tournament round limit reached');
-    }, 60000);
-  });
-
-  describe('HP persistence edge cases', () => {
-    test('Pokemon with 0 HP cannot battle', async () => {
-      const create = await request(app)
-        .post('/api/tournaments')
-        .set('Authorization', `Bearer ${authToken}`)
-        .send({ name: 'HP Zero Cup', max_rounds: 4, tournament_active_time: 30 });
-      const id = create.body.tournament.id;
-
-      // First battle
-      const battle1 = await request(app)
-        .post(`/api/tournaments/${id}/battle`)
-        .set('Authorization', `Bearer ${authToken}`)
-        .send({ attacker: 'pikachu', defender: 'bulbasaur' });
-      expect(battle1.status).toBe(201);
-
-      const loser = battle1.body.battle.attacker1Name === battle1.body.battle.winnerName ? 
-        battle1.body.battle.attacker2Name : battle1.body.battle.attacker1Name;
-
-      // Try to use the loser in another battle
-      const battle2 = await request(app)
-        .post(`/api/tournaments/${id}/battle`)
-        .set('Authorization', `Bearer ${authToken}`)
-        .send({ attacker: loser, defender: 'charmander' });
-      expect(battle2.status).toBe(201);
-
-      // The loser should start with 0 HP and lose immediately
-      expect(battle2.body.battle.winnerName).not.toBe(loser);
-    }, 60000);
-
-    test('HP state persists across tournament queries', async () => {
-      const create = await request(app)
-        .post('/api/tournaments')
-        .set('Authorization', `Bearer ${authToken}`)
-        .send({ name: 'HP State Cup', max_rounds: 3, tournament_active_time: 30 });
-      const id = create.body.tournament.id;
-
-      // First battle
-      const battle1 = await request(app)
-        .post(`/api/tournaments/${id}/battle`)
-        .set('Authorization', `Bearer ${authToken}`)
-        .send({ attacker: 'pikachu', defender: 'bulbasaur' });
-      expect(battle1.status).toBe(201);
-
-      const winner1 = battle1.body.battle.winnerName;
-      const winner1Hp = battle1.body.battle.winnerRemainingHp;
-
-      // Query tournament to verify HP state is saved
-      const tournament = await Tournament.findById(id);
-      const pokemonKey = `${winner1 === 'pikachu' ? 25 : 1}-${winner1}`;
-      expect(tournament.hpState[pokemonKey]).toBe(winner1Hp);
-
-      // Second battle should use the saved HP
-      const battle2 = await request(app)
-        .post(`/api/tournaments/${id}/battle`)
-        .set('Authorization', `Bearer ${authToken}`)
-        .send({ attacker: winner1, defender: 'charmander' });
-      expect(battle2.status).toBe(201);
-    }, 60000);
-  });
-
-  describe('Tournament status logic edge cases', () => {
-    test('tournament status updates correctly on time expiry', async () => {
-      const create = await request(app)
-        .post('/api/tournaments')
-        .set('Authorization', `Bearer ${authToken}`)
-        .send({ name: 'Status Update Cup', max_rounds: 5, tournament_active_time: 1 });
-      const id = create.body.tournament.id;
-
-      // Verify tournament is live initially
-      let tournament = await Tournament.findById(id);
-      expect(tournament.status).toBe('live');
-
+    test('cache expires after TTL', async () => {
+      const key = 'expiry-test';
+      const value = { test: 'data' };
+      
+      cache.set(key, value, 100); // 100ms TTL
+      
+      // Should be available immediately
+      expect(cache.get(key)).toEqual(value);
+      
       // Wait for expiry
-      await new Promise(resolve => setTimeout(resolve, 61000));
-
-      // Try to add battle (this should auto-complete the tournament)
-      await request(app)
-        .post(`/api/tournaments/${id}/battle`)
-        .set('Authorization', `Bearer ${authToken}`)
-        .send({ attacker: 'pikachu', defender: 'bulbasaur' });
-
-      // Verify tournament is now completed
-      tournament = await Tournament.findById(id);
-      expect(tournament.status).toBe('completed');
-    }, 70000);
-
-    test('tournament status updates correctly on max rounds', async () => {
-      const create = await request(app)
-        .post('/api/tournaments')
-        .set('Authorization', `Bearer ${authToken}`)
-        .send({ name: 'Max Rounds Status Cup', max_rounds: 2, tournament_active_time: 30 });
-      const id = create.body.tournament.id;
-
-      // First battle
-      await request(app)
-        .post(`/api/tournaments/${id}/battle`)
-        .set('Authorization', `Bearer ${authToken}`)
-        .send({ attacker: 'pikachu', defender: 'bulbasaur' });
-
-      let tournament = await Tournament.findById(id);
-      expect(tournament.status).toBe('live');
-
-      // Second battle (should complete tournament)
-      await request(app)
-        .post(`/api/tournaments/${id}/battle`)
-        .set('Authorization', `Bearer ${authToken}`)
-        .send({ attacker: 'charmander', defender: 'squirtle' });
-
-      tournament = await Tournament.findById(id);
-      expect(tournament.status).toBe('completed');
-    }, 60000);
+      await new Promise(resolve => setTimeout(resolve, 150));
+      
+      // Should be null after expiry
+      expect(cache.get(key)).toBeNull();
+    });
   });
 
-  describe('Battle service edge cases', () => {
-    test('battle with Pokemon having very low HP', () => {
-      const weakPokemon = { 
-        id: 1, 
-        name: 'weak', 
-        types: ['normal'], 
-        stats: { hp: 1, attack: 1, defense: 1, speed: 1 },
-        currentHp: 1
-      };
-      const strongPokemon = { 
-        id: 2, 
-        name: 'strong', 
-        types: ['normal'], 
-        stats: { hp: 100, attack: 100, defense: 100, speed: 100 },
-        currentHp: 100
-      };
+  describe('Rate Limiting', () => {
+    test('rate limiting headers are present', async () => {
+      const res = await request(app)
+        .get('/api/pokemon?limit=1')
+        .set('Authorization', `Bearer ${authToken}`);
+      
+      expect(res.status).toBe(200);
+      expect(res.headers).toHaveProperty('x-ratelimit-limit');
+      expect(res.headers).toHaveProperty('x-ratelimit-remaining');
+      expect(res.headers).toHaveProperty('x-ratelimit-reset');
+    });
+  });
 
-      const result = simulateBattle(weakPokemon, strongPokemon);
-      expect(result.winner.name).toBe('strong');
-      expect(result.rounds).toBe(2); // Weak Pokemon attacks first, then strong Pokemon finishes it
+  describe('Error Handling', () => {
+    test('handles server errors gracefully', async () => {
+      // This test would require mocking a service to throw an error
+      // For now, we'll test that the server doesn't crash
+      const res = await request(app)
+        .get('/api/pokemon?limit=1')
+        .set('Authorization', `Bearer ${authToken}`);
+      
+      expect(res.status).toBe(200);
     });
 
-    test('battle with identical Pokemon stats', () => {
-      const pokemon1 = { 
-        id: 1, 
-        name: 'identical1', 
-        types: ['normal'], 
-        stats: { hp: 50, attack: 50, defense: 50, speed: 50 },
-        currentHp: 50
-      };
-      const pokemon2 = { 
-        id: 2, 
-        name: 'identical2', 
-        types: ['normal'], 
-        stats: { hp: 50, attack: 50, defense: 50, speed: 50 },
-        currentHp: 50
-      };
+    test('handles invalid JWT token', async () => {
+      const res = await request(app)
+        .get('/api/pokemon')
+        .set('Authorization', 'Bearer invalid-token');
+      
+      expect(res.status).toBe(401);
+    });
 
-      const result = simulateBattle(pokemon1, pokemon2);
-      expect(result.winner).toBeDefined();
-      expect(result.loser).toBeDefined();
-      expect(result.winner.name).not.toBe(result.loser.name);
-      expect(result.rounds).toBeGreaterThan(0);
+    test('handles missing JWT token', async () => {
+      const res = await request(app).get('/api/pokemon');
+      expect(res.status).toBe(401);
     });
   });
 });

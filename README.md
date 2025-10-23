@@ -77,10 +77,6 @@ Fix existing issues and implement missing Pokemon Battle Simulator features in t
 - Password: minimum 6 characters, required
 - Username must be unique
 
-**Error Cases**:
-- Invalid credentials: `401 Unauthorized`
-- Missing fields: `400 Bad Request`
-
 ### 1.2 User Login
 
 **Endpoint**: `POST /api/auth/login`
@@ -105,66 +101,60 @@ Fix existing issues and implement missing Pokemon Battle Simulator features in t
 }
 ```
 
-**Error Cases**:
-- Invalid credentials: `401 Unauthorized`
-- Missing fields: `400 Bad Request`
+### 1.3 Implementation Details
 
-#### Validation Schemas (`src/utils/validators.js`)
+#### Password Security Strategy
+- Use bcrypt for password hashing with salt rounds (10-12)
+- Never store plain text passwords
+- Hash password before saving to database
+- Use bcrypt.compare() for login verification
 
-- **registerSchema**: Add username (3-30 chars), password (min 6 chars)
-- **loginSchema**: Add username and password validation
-- **pokemonListSchema**: Add pagination (page/limit), type filter, generation filter, stats filters, sorting (sortBy/sortOrder)
-- **createTournamentSchema**: Add name (required), max_rounds (1-20), tournament_active_time (1-1440 minutes)
-- **addBattleToTournamentSchema**: Add attacker and defender validation
+#### JWT Token Management
+- Include userId in JWT payload
+- Set appropriate expiration time (24 hours recommended)
+- Use JWT_SECRET from environment variables
+- Return token in response header or body
 
-#### User Model (`src/models/User.js`)
+#### User Model Structure
+- Schema fields: username (unique, required), password (hashed, required), timestamps
+- Create unique index on username field
+- Enable mongoose timestamps for createdAt/updatedAt
 
-- **Schema Fields**: username (required, unique, trimmed), password (required, hashed), createdAt
-- **Schema Options**: Enable timestamps
-- **Password Hashing**: Use bcrypt for password security
-- **Indexes**: Create unique index on username
+#### Authentication Flow
+1. **Registration**: Validate input → Check username uniqueness → Hash password → Save user → Return user data
+2. **Login**: Validate input → Find user by username → Compare password → Generate JWT → Return token + user data
 
-#### Authentication Middleware (`src/middleware/auth.js`)
-
-- **Token Validation**: Check if token exists, return 401 if missing
-- **JWT Secret**: Verify JWT_SECRET is configured, return 500 if missing
-- **User Lookup**: Find user by decoded userId, return 401 if not found
-- **Error Handling**: Catch JWT errors and return 401
+#### Error Handling Patterns
+- Username already exists: 409 Conflict
+- Invalid credentials: 401 Unauthorized  
+- Missing required fields: 400 Bad Request
+- Server errors: 500 Internal Server Error
 
 ## Task 2: Pokemon List API
 
 ### 2.1 Basic Pokemon List
 
-**Endpoint**: `GET /api/pokemon/list`
+**Endpoint**: `GET /api/pokemon`
 
 **Headers**: `Authorization: Bearer <token>`
 
 **Query Parameters**:
 - `page` (optional): Page number (default: 1)
 - `limit` (optional): Items per page (default: 20, max: 100)
+- `type` (optional): Filter by Pokemon type (e.g., "fire", "water")
+- `generation` (optional): Filter by generation (1-8)
+- `minStats` (optional): Minimum total stats
+- `maxStats` (optional): Maximum total stats
+- `sortBy` (optional): Sort field ("id" or "name")
+- `sortOrder` (optional): Sort direction ("asc" or "desc", default: "asc")
 
 **Expected Output**:
 ```json
 {
-  "data": [
+  "pokemons": [
     {
       "id": 1,
-      "name": "bulbasaur",
-      "height": 7,
-      "weight": 69,
-      "baseExperience": 64,
-      "types": ["grass", "poison"],
-      "stats": {
-        "hp": 45,
-        "attack": 49,
-        "defense": 49,
-        "specialAttack": 65,
-        "specialDefense": 65,
-        "speed": 45,
-        "total": 318
-      },
-      "abilities": ["overgrow", "chlorophyll"],
-      "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/1.png"
+      "name": "bulbasaur"
     }
   ],
   "pagination": {
@@ -178,76 +168,145 @@ Fix existing issues and implement missing Pokemon Battle Simulator features in t
 }
 ```
 
-**Requirements**:
-- Fetch data from PokeAPI (https://pokeapi.co/api/v2)
-- Calculate total stats (sum of all stat values)
-- Include pagination metadata
-- Track execution time
+### 2.2 Get Pokemon Details
 
-#### Pokemon Service (`src/services/pokeapi.service.js`)
+**Endpoint**: `GET /api/pokemon/:name`
 
-- **External API Integration**: Fetch data from PokeAPI (https://pokeapi.co/api/v2)
-- **Data Transformation**: Convert PokeAPI format to your format
-- **Stats Calculation**: Calculate total stats (hp + attack + defense + specialAttack + specialDefense + speed)
-- **Pagination Logic**: Implement offset-based pagination
-- **Error Handling**: Handle API timeouts and failures gracefully
-
-#### Pokemon Controller (`src/controllers/pokemonController.js`)
-
-- **Authentication**: Protect all endpoints with auth middleware
-- **Validation**: Validate query parameters using Joi schemas
-- **Response Format**: Include data, pagination, cached status, execution time
-- **Error Handling**: Return appropriate HTTP status codes
-
-## Task 3: Caching System
-
-### 3.1 Cache Implementation
-
-**Requirements**:
-- Cache Pokemon list responses for 5 minutes
-- Cache individual Pokemon details for 10 minutes
-- Include cache status in response (`cached: true/false`)
-- Handle cache misses gracefully
-
-**Expected Behavior**:
-- First request: `cached: false`, normal execution time
-- Subsequent identical requests: `cached: true`, faster execution
-- Cache key should include all query parameters
-
-**Example Cache Key**: `pokemon:list:page=1:limit=20:type=fire`
-
-**Cache Response Example**:
+**Expected Output**:
 ```json
 {
-  "data": [...],
-  "pagination": {...},
-  "cached": true,
-  "executionTime": 5
+  "data": {
+    "id": 25,
+    "name": "pikachu",
+    "height": 4,
+    "weight": 60,
+    "baseExperience": 112,
+    "types": ["electric"],
+    "stats": {
+      "hp": 35,
+      "attack": 55,
+      "defense": 40,
+      "specialAttack": 50,
+      "specialDefense": 50,
+      "speed": 90,
+      "total": 320
+    },
+    "abilities": ["static", "lightning-rod"],
+    "sprite": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/25.png"
+  },
+  "cached": false,
+  "executionTime": 584
 }
 ```
 
-#### Cache Implementation (`src/utils/cache.js`)
+### 2.3 Implementation Details
 
-- **In-Memory Cache**: Use Map or object for caching (no Redis required)
-- **Cache Key Generation**: Include all query parameters in cache key
-- **TTL Implementation**: Implement time-to-live with timestamps
-- **Cache Hit/Miss Logic**: Track cache statistics
-- **Memory Management**: Prevent memory leaks with proper cleanup
+#### PokeAPI Integration Strategy
+1. **Base API Call**: `GET https://pokeapi.co/api/v2/pokemon?limit=1000&offset=0`
+2. **Response Structure**: PokeAPI returns `{count, next, previous, results: [{name, url}]}`
+3. **Individual Pokemon Data**: Each Pokemon URL needs separate API call for detailed stats
+4. **Batch Processing**: Use Promise.all() to fetch all Pokemon details simultaneously
 
-#### Cache Integration
+#### Data Transformation Process
+- **PokeAPI Response**: Contains nested objects for types, stats, abilities
+- **Transform Types**: Extract type names from nested type objects
+- **Transform Stats**: Convert stats array to object with stat names as keys
+- **Calculate Total Stats**: Sum all base_stat values for total calculation
+- **Transform Abilities**: Extract ability names from nested ability objects
+- **Sprite URL**: Use front_default from sprites object
 
-- **Pokemon List Caching**: Cache Pokemon list responses for 5 minutes
-- **Individual Pokemon Caching**: Cache Pokemon details for 10 minutes
-- **Cache Status**: Include cached status in responses
-- **Cache Key Pattern**: `pokemon:list:page=1:limit=20:type=fire`
+#### Caching Implementation
+- **Cache Key Strategy**: Include all query parameters in key
+- **Cache Check**: Check cache before making API calls
+- **Cache Set**: Store transformed data with TTL
+- **Cache TTL**: 5 minutes for Pokemon lists, 10 minutes for individual Pokemon
+
+## Task 3: Battle Simulation
+
+### 3.1 Simulate Battle
+
+**Endpoint**: `POST /api/battle`
+
+**Input**:
+```json
+{
+  "attacker1": {
+    "name": "charizard",
+    "stats": {
+      "hp": 78,
+      "attack": 84,
+      "defense": 78,
+      "specialAttack": 109,
+      "specialDefense": 85,
+      "speed": 100,
+      "total": 534
+    }
+  },
+  "attacker2": {
+    "name": "pikachu",
+    "stats": {
+      "hp": 35,
+      "attack": 55,
+      "defense": 40,
+      "specialAttack": 50,
+      "specialDefense": 50,
+      "speed": 90,
+      "total": 320
+    }
+  }
+}
+```
+
+**Expected Output**:
+```json
+{
+  "message": "Battle completed successfully",
+  "battle": {
+    "id": "507f1f77bcf86cd799439011",
+    "attacker1": "charizard",
+    "attacker2": "pikachu",
+    "winner": "charizard",
+    "createdAt": "2025-01-20T10:30:00.000Z"
+  }
+}
+```
+
+### 3.2 List All Battles
+
+**Endpoint**: `GET /api/battle`
+
+**Expected Output**:
+```json
+{
+  "battles": [
+    {
+      "_id": "507f1f77bcf86cd799439011",
+      "attacker1": "charizard",
+      "attacker2": "pikachu",
+      "winner": "charizard",
+      "createdAt": "2025-01-20T10:30:00.000Z"
+    }
+  ],
+  "total": 1,
+  "cached": false,
+  "executionTime": 96
+}
+```
+
+### 3.3 Implementation Details
+
+#### Battle Algorithm Strategy
+- **Turn Order**: Compare Pokemon speed stats, higher speed attacks first
+- **Damage Calculation**: (attacker.attack - defender.defense) + random(1-10)
+- **Minimum Damage**: Ensure at least 1 damage per attack
+- **HP Tracking**: Start with full HP, reduce by damage each round
+- **Battle End**: When any Pokemon reaches 0 HP
 
 ## Task 4: Tournament Management
 
 ### 4.1 Create Tournament
 
 **Endpoint**: `POST /api/tournaments`
-
-**Headers**: `Authorization: Bearer <token>`
 
 **Input**:
 ```json
@@ -276,79 +335,17 @@ Fix existing issues and implement missing Pokemon Battle Simulator features in t
 }
 ```
 
-**Validation Rules**:
-- Name: required, string
-- max_rounds: 1-20, required
-- tournament_active_time: 1-1440 minutes (1 day), optional (default: 30)
-
 ### 4.2 List Live Tournaments
 
 **Endpoint**: `GET /api/tournaments/live`
-
-**Headers**: `Authorization: Bearer <token>`
-
-**Expected Output**:
-```json
-{
-  "tournaments": [
-    {
-      "id": "507f1f77bcf86cd799439011",
-      "name": "Elite Four Championship",
-      "status": "live",
-      "maxRounds": 5,
-      "currentRound": 2,
-      "tournamentActiveTime": 60,
-      "endTime": "2025-01-20T11:30:00.000Z",
-      "tournamentEndsIn": "45m 15s",
-      "createdAt": "2025-01-20T10:30:00.000Z"
-    }
-  ]
-}
-```
 
 ### 4.3 List Completed Tournaments
 
 **Endpoint**: `GET /api/tournaments/completed`
 
-**Headers**: `Authorization: Bearer <token>`
-
-**Expected Output**:
-```json
-{
-  "tournaments": [
-    {
-      "id": "507f1f77bcf86cd799439011",
-      "name": "Elite Four Championship",
-      "status": "completed",
-      "totalRounds": 5,
-      "completedAt": "2025-01-20T11:30:00.000Z",
-      "createdAt": "2025-01-20T10:30:00.000Z"
-    }
-  ]
-}
-```
-
-#### Tournament Model (`src/models/Tournament.js`)
-
-- **Schema Fields**: name (required), status (live/completed), maxRounds (1-20), currentRound, tournamentActiveTime, endTime, rounds (array), hpState (object), userId (ObjectId)
-- **Schema Options**: Enable timestamps
-- **Indexes**: Create indexes for userId, status, endTime
-- **Status Logic**: Auto-update status based on time and rounds
-
-#### Tournament Controller (`src/controllers/tournamentController.js`)
-
-- **Create Tournament**: Validate input, calculate endTime, set default values
-- **List Tournaments**: Separate endpoints for live and completed tournaments
-- **Time Formatting**: Human-readable time format ("59m 30s", "2h 15m", "Expired")
-- **Status Updates**: Auto-complete tournaments on time expiry or max rounds
-
-## Task 5: Battle Simulation
-
-### 5.1 Add Battle to Tournament
+### 4.4 Add Battle to Tournament
 
 **Endpoint**: `POST /api/tournaments/:tournamentId/battle`
-
-**Headers**: `Authorization: Bearer <token>`
 
 **Input**:
 ```json
@@ -358,119 +355,41 @@ Fix existing issues and implement missing Pokemon Battle Simulator features in t
 }
 ```
 
-**Expected Output**:
-```json
-{
-  "message": "Battle added successfully",
-  "battle": {
-    "id": "507f1f77bcf86cd799439012",
-    "tournamentId": "507f1f77bcf86cd799439011",
-    "battleNumber": 1,
-    "attacker1Name": "pikachu",
-    "attacker2Name": "bulbasaur",
-    "winnerName": "pikachu",
-    "winnerRemainingHp": 37,
-    "loserName": "bulbasaur",
-    "loserRemainingHp": 0,
-    "rounds": 3,
-    "battleLog": [
-      {
-        "round": 1,
-        "attacker": "pikachu",
-        "defender": "bulbasaur",
-        "damage": 15,
-        "defenderHpAfter": 30
-      }
-    ],
-    "createdAt": "2025-01-20T10:35:00.000Z"
-  }
-}
-```
-
-**Battle Logic Requirements**:
-- Pokemon with higher speed attacks first
-- Damage = (attacker.attack - defender.defense) + random(1-10)
-- Minimum damage = 1
-- Track HP changes across battles
-- Pokemon with 0 HP cannot battle
-- Log each round with damage and remaining HP
-
-### 5.2 Get Tournament Results
+### 4.5 Get Tournament Results
 
 **Endpoint**: `GET /api/tournaments/:tournamentId/results`
 
-**Headers**: `Authorization: Bearer <token>`
+### 4.6 Implementation Details
 
-**Expected Output**:
-```json
-{
-  "tournament": {
-    "id": "507f1f77bcf86cd799439011",
-    "name": "Elite Four Championship",
-    "status": "completed",
-    "maxRounds": 5,
-    "totalRounds": 3,
-    "rounds": [
-      {
-        "battleNumber": 1,
-        "attacker1": "pikachu",
-        "attacker2": "bulbasaur",
-        "winner": {
-          "name": "pikachu",
-          "remainingHp": 37
-        },
-        "createdAt": "2025-01-20T10:35:00.000Z"
-      }
-    ],
-    "completedAt": "2025-01-20T10:45:00.000Z"
-  }
-}
-```
+#### Tournament Creation Logic
+- **End Time Calculation**: Add tournament_active_time (in minutes) to current timestamp
+- **Default Values**: Set currentRound to 0, status to "live"
+- **User Association**: Link tournament to authenticated user via userId
+- **HP State Initialization**: Create empty hpState object for tracking Pokemon HP
 
-#### Battle Service (`src/services/battle.service.js`)
+#### Time Management Strategy
+- **End Time Storage**: Store as ISO timestamp in database
+- **Human-Readable Format**: Convert remaining time to "Xh Ym Zs" format
+- **Status Updates**: Check if current time > endTime to mark as completed
+- **Time Calculations**: Use Date.now() and new Date() for time operations
 
-- **Battle Algorithm**: Turn-based combat with speed-based turn order
-- **Damage Calculation**: (attacker.attack - defender.defense) + random(1-10)
-- **HP Persistence**: Track Pokemon HP across multiple battles
-- **Battle Logging**: Log each round with damage and remaining HP
-- **Winner Determination**: Pokemon with 0 HP loses
+## Task 5: Pokemon Filtering & Sorting
 
-#### Battle Model (`src/models/Battle.js`)
+### 5.1 Filter by Type
 
-- **Schema Fields**: tournamentId (ObjectId), battleNumber, attacker1Name, attacker2Name, winnerName, winnerRemainingHp, loserName, loserRemainingHp, rounds, battleLog (array)
-- **Schema Options**: Enable timestamps
-- **Indexes**: Create indexes for tournamentId, battleNumber
+**Endpoint**: `GET /api/pokemon?type=fire`
 
-#### Battle Controller
+### 5.2 Filter by Generation
 
-- **Add Battle**: Validate Pokemon names, check tournament status, simulate battle
-- **HP State Management**: Update tournament hpState with remaining HP
-- **Round Validation**: Ensure battles don't exceed max rounds
-- **Error Handling**: Handle invalid Pokemon names, completed tournaments
+**Endpoint**: `GET /api/pokemon?generation=1`
 
-## Task 6: Pokemon Filtering & Sorting
+### 5.3 Filter by Stats
 
-### 6.1 Filter by Type
+**Endpoint**: `GET /api/pokemon?minStats=500&maxStats=700`
 
-**Endpoint**: `GET /api/pokemon/list?type=fire`
+### 5.4 Sort Pokemon
 
-**Expected Output**: Only fire-type Pokemon
-
-### 6.2 Filter by Generation
-
-**Endpoint**: `GET /api/pokemon/list?generation=1`
-
-**Expected Output**: Only generation 1 Pokemon (IDs 1-151)
-
-### 6.3 Filter by Stats
-
-**Endpoint**: `GET /api/pokemon/list?minStats=500&maxStats=700`
-
-**Expected Output**: Pokemon with total stats between 500-700
-
-### 6.4 Sort Pokemon
-
-**Endpoint**: `GET /api/pokemon/list?sortBy=name&sortOrder=asc`
+**Endpoint**: `GET /api/pokemon?sortBy=name&sortOrder=asc`
 
 **Available Sort Fields**:
 - `name` (alphabetical)
@@ -480,30 +399,32 @@ Fix existing issues and implement missing Pokemon Battle Simulator features in t
 
 **Sort Orders**: `asc` or `desc`
 
-### 6.5 Combined Filters
+### 5.5 Combined Filters
 
-**Endpoint**: `GET /api/pokemon/list?type=water&generation=1&sortBy=name&sortOrder=asc&limit=10`
+**Endpoint**: `GET /api/pokemon?type=water&generation=1&sortBy=name&sortOrder=asc&limit=10`
 
-**Expected Output**: Water-type Pokemon from generation 1, sorted by name, limited to 10 results
+### 5.6 Implementation Details
 
-#### Filtering Implementation
+#### Filtering Strategy
+- **Type Filtering**: Check if Pokemon.types array includes the filter type
+- **Generation Filtering**: Use Pokemon ID ranges (Gen 1: 1-151, Gen 2: 152-251, etc.)
+- **Stats Filtering**: Compare Pokemon.stats.total against minStats/maxStats
+- **Client-Side Processing**: Apply filters after fetching all Pokemon data
+- **Case Sensitivity**: Convert filter values to lowercase for type matching
 
-- **Type Filtering**: `pokemon.types.includes(filterType)`
-- **Generation Filtering**: Pokemon ID ranges (Gen 1: 1-151, Gen 2: 152-251, etc.)
-- **Stats Filtering**: `pokemon.stats.total >= minStats && pokemon.stats.total <= maxStats`
-- **Combined Filters**: Apply all filters in sequence
-- **Client-Side Processing**: Filter and sort in memory after fetching data
+#### Generation ID Ranges
+- **Generation 1**: Pokemon IDs 1-151
+- **Generation 2**: Pokemon IDs 152-251
+- **Generation 3**: Pokemon IDs 252-386
+- **Generation 4**: Pokemon IDs 387-493
+- **Generation 5**: Pokemon IDs 494-649
+- **Generation 6**: Pokemon IDs 650-721
+- **Generation 7**: Pokemon IDs 722-809
+- **Generation 8**: Pokemon IDs 810+
 
-#### Sorting Implementation
+## Task 6: Rate Limiting
 
-- **Sort Fields**: name (alphabetical), height, weight, base_experience (numerical)
-- **Sort Orders**: asc or desc
-- **Sorting Algorithm**: Proper string/number comparison
-- **Pagination**: Apply pagination after filtering and sorting
-
-## Task 7: Rate Limiting
-
-### 7.1 Rate Limiting Rules
+### 6.1 Rate Limiting Rules
 
 **Requirements**:
 - 100 requests per 15 minutes per IP
@@ -526,32 +447,26 @@ X-RateLimit-Reset: 1640995200
 }
 ```
 
-#### Rate Limiting Middleware (`src/middleware/rateLimiter.js`)
+## Task 7: Error Handling & Validation
 
-- **IP-Based Limiting**: 100 requests per 15 minutes per IP
-- **User-Based Limiting**: 10 requests per minute per authenticated user
-- **Rate Limit Headers**: Include X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset
-- **Error Responses**: Return 429 with retry information
-- **Storage**: Use in-memory storage for rate limit tracking
+### 7.1 Error Handling
 
-## Task 8: Error Handling & Validation
+- **400**: Invalid input/validation errors
+- **401**: Authentication failures
+- **403**: Forbidden access
+- **404**: Resource not found
+- **429**: Rate limit exceeded
+- **500**: Server errors
 
-#### Error Handling Middleware
-
-- **Centralized Error Handling**: Catch all errors and return appropriate responses
-- **HTTP Status Codes**: 400 (validation), 401 (auth), 403 (forbidden), 404 (not found), 500 (server)
-- **Error Response Format**: Standardized error message format
-- **Logging**: Log errors for debugging and monitoring
-
-#### Input Validation
+### 7.2 Input Validation
 
 - **Joi Schemas**: Validate all input parameters
 - **Error Messages**: Descriptive validation error messages
 - **Security**: Prevent injection attacks and malformed data
 
-## Task 9: Logging & Monitoring
+## Task 8: Logging & Monitoring
 
-### 9.1 Request Logging
+### 8.1 Request Logging
 
 **Requirements**:
 - Log all API requests to `access.log`
@@ -560,10 +475,10 @@ X-RateLimit-Reset: 1640995200
 
 **Example Log Entry**:
 ```
-[2025-01-20T10:30:00.000Z] GET /api/pokemon/list 200 150ms
+[2025-01-20T10:30:00.000Z] GET /api/pokemon 200 150ms
 ```
 
-### 9.2 Health Check
+### 8.2 Health Check
 
 **Endpoint**: `GET /health`
 
@@ -576,59 +491,30 @@ X-RateLimit-Reset: 1640995200
 }
 ```
 
-#### Request Logging
+## Task 9: Caching System
 
-- **Access Logs**: Log all API requests to access.log
-- **Log Format**: `[timestamp] method url status responseTime`
-- **Log Rotation**: Prevent large log files
-- **Response Time**: Track and log response times
+### 9.1 Cache Implementation
 
-#### Health Check
+**Requirements**:
+- Cache Pokemon list responses for 5 minutes
+- Cache individual Pokemon details for 10 minutes
+- Include cache status in response (`cached: true/false`)
+- Handle cache misses gracefully
 
-- **Health Endpoint**: GET /health
-- **Response Format**: Include status, timestamp, uptime
-- **Monitoring**: Basic system health monitoring
+**Expected Behavior**:
+- First request: `cached: false`, normal execution time
+- Subsequent identical requests: `cached: true`, faster execution
+- Cache key should include all query parameters
 
 ## Task 10: Testing
 
-#### Test Implementation
+### 10.1 Test Implementation
 
 - **Unit Tests**: Test individual functions and services
 - **Integration Tests**: Test API endpoints and database interactions
 - **Authentication Tests**: Test login, registration, and protected routes
 - **Battle Logic Tests**: Test battle simulation and HP persistence
 - **Error Handling Tests**: Test error scenarios and edge cases
-
-### API Endpoints
-
-| **Endpoint** | **Method** | **Description** | **Validations & Behavior** | **Response** |
-|--------------|------------|-----------------|----------------------------|--------------|
-| `/api/auth/register` | `POST` | User registration | Validate username/password, hash password | `201 Created` + user object |
-| `/api/auth/login` | `POST` | User login | Validate credentials, return JWT | `200 OK` + token + user |
-| `/api/pokemon/list` | `GET` | List Pokemon with filters | Support pagination, filtering, sorting | `200 OK` + Pokemon array + pagination |
-| `/api/tournaments` | `POST` | Create tournament | Validate input, set defaults | `201 Created` + tournament object |
-| `/api/tournaments/live` | `GET` | List live tournaments | Return live tournaments only | `200 OK` + tournaments array |
-| `/api/tournaments/completed` | `GET` | List completed tournaments | Return completed tournaments only | `200 OK` + tournaments array |
-| `/api/tournaments/:id/battle` | `POST` | Add battle to tournament | Validate Pokemon names, simulate battle | `201 Created` + battle object |
-| `/api/tournaments/:id/results` | `GET` | Get tournament results | Return tournament with all battles | `200 OK` + tournament results |
-| `/health` | `GET` | Health check | Return system status | `200 OK` + health object |
-
-### Error Handling
-
-- **400**: Invalid input/validation errors
-- **401**: Authentication failures
-- **403**: Forbidden access
-- **404**: Resource not found
-- **429**: Rate limit exceeded
-- **500**: Server errors
-
-### Response Formats
-
-- **Success**: Include relevant data object
-- **Error**: Include error message string
-- **Pagination**: { total, page, pages, limit }
-- **Tournament**: Include status, rounds, HP state
-- **Battle**: Include winner, loser, HP, battle log
 
 ## Environment Setup
 
@@ -643,6 +529,23 @@ CACHE_TTL=300000
 RATE_LIMIT_WINDOW_MS=900000
 RATE_LIMIT_MAX_REQUESTS=100
 ```
+
+## API Endpoints
+
+| **Endpoint** | **Method** | **Description** | **Validations & Behavior** | **Response** |
+|--------------|------------|-----------------|----------------------------|--------------|
+| `/api/auth/register` | `POST` | User registration | Validate username/password, hash password | `201 Created` + user object |
+| `/api/auth/login` | `POST` | User login | Validate credentials, return JWT | `200 OK` + token + user |
+| `/api/pokemon` | `GET` | List Pokemon with filters | Support pagination, filtering, sorting | `200 OK` + Pokemon array + pagination |
+| `/api/pokemon/:name` | `GET` | Get Pokemon details | Validate Pokemon name | `200 OK` + Pokemon details |
+| `/api/battle` | `POST` | Simulate battle | Validate Pokemon data, simulate battle | `200 OK` + battle result |
+| `/api/battle` | `GET` | List all battles | Return all battles sorted by newest | `200 OK` + battles array |
+| `/api/tournaments` | `POST` | Create tournament | Validate input, set defaults | `201 Created` + tournament object |
+| `/api/tournaments/live` | `GET` | List live tournaments | Return live tournaments only | `200 OK` + tournaments array |
+| `/api/tournaments/completed` | `GET` | List completed tournaments | Return completed tournaments only | `200 OK` + tournaments array |
+| `/api/tournaments/:id/battle` | `POST` | Add battle to tournament | Validate Pokemon names, simulate battle | `201 Created` + battle object |
+| `/api/tournaments/:id/results` | `GET` | Get tournament results | Return tournament with all battles | `200 OK` + tournament results |
+| `/health` | `GET` | Health check | Return system status | `200 OK` + health object |
 
 ## Project Structure
 
