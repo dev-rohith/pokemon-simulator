@@ -1,0 +1,74 @@
+name: ci.yml
+
+on:
+  pull_request:
+    branches:
+      - main,dev
+    types:
+      - opened
+      - synchronize
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18.x"
+
+
+      - name: Terminate if unwanted changes detected
+        if: steps.check.outputs.changed == 'true'
+        run: |
+          echo "unwanted changes found in the repository — terminating job"
+          exit 1
+
+      - name: Install dependencies
+        run: npm i
+
+      - name: Install Supabase JS client
+        run: npm install @supabase/supabase-js
+
+      - name: Make fetch script executable
+        run: chmod +x scripts/download_hidden_test_and_run.sh
+
+      - name: Fetch S3 URL and download hidden test.Run the downloaded tests.
+        env:
+
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_KEY }}
+          REPO_NAME: ${{ github.event.repository.name }}
+        run: |
+          echo "Environment variables:"
+          echo "SUPABASE_URL: $SUPABASE_URL"
+          echo "REPO_NAME: $REPO_NAME"
+          ./scripts/download_hidden_test_and_run.sh
+        continue-on-error: true
+
+      - name: Run tests
+        continue-on-error: true
+        run: |
+          npm run test --silent > /dev/null 2>&1
+
+      - name: Show Test Summary (Passed/Failed/Total)
+        run: |
+          echo "Test Summary:"
+          cat ./results.json | jq '{
+            passed: .numPassedTests,
+            failed: .numFailedTests,
+            total: .numTotalTests
+          }'
+          
+      - name: Make script executable
+        run: chmod +x scripts/update-results.sh
+      - name: Upload results to Supabase
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_API_KEY: ${{ secrets.SUPABASE_KEY }}
+          REPO_NAME: ${{ github.event.repository.name }}
+        run: scripts/update-results.sh
