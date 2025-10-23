@@ -16,7 +16,6 @@ This is a **starter template** for a Pokemon Battle Simulator backend assessment
 - **Authentication System** - JWT-based registration/login
 - **Pokemon API** - List and details endpoints with filtering, sorting, pagination
 - **Battle API** - Simulate battles and store results in database
-- **Tournament System** - Create and manage tournaments with HP persistence
 - **Caching System** - In-memory caching for performance optimization
 - **Input Validation** - Joi schemas for all endpoints
 - **Error Handling** - Centralized error management
@@ -31,7 +30,7 @@ npm start         # Start the server (will show placeholder responses)
 
 ## Assessment Overview
 
-This is a Pokemon Battle Simulator backend where users can create tournaments, simulate Pokemon battles, and manage Pokemon data. The system includes tournament management, battle simulation with HP persistence, Pokemon data integration, and advanced filtering capabilities.
+This is a Pokemon Battle Simulator backend where users can simulate Pokemon battles and manage Pokemon data. The system includes battle simulation, Pokemon data integration, and advanced filtering capabilities.
 
 You are tasked with completing a Pokemon Battle Simulator system built with JavaScript, Node.js, Express, and MongoDB with Mongoose ODM. The system has authentication with specific permissions and capabilities.
 
@@ -54,10 +53,8 @@ You are tasked with completing a Pokemon Battle Simulator system built with Java
 Authenticated users can:
 1. Register and login with JWT authentication
 2. Fetch Pokemon data with filtering, sorting, and pagination
-3. Create and manage tournaments
-4. Simulate Pokemon battles with HP persistence
-5. View tournament results and statistics
-6. Access Pokemon data with advanced filtering
+3. Simulate Pokemon battles
+4. Access Pokemon data with advanced filtering
 
 ## Setup Instructions
 
@@ -339,92 +336,21 @@ Fix existing issues and implement missing Pokemon Battle Simulator features in t
 - **HP Tracking**: Start with full HP, reduce by damage each round
 - **Battle End**: When any Pokemon reaches 0 HP
 
-## Task 4: Tournament Management
+## Task 4: Pokemon Filtering & Sorting
 
-### 4.1 Create Tournament
-
-**Endpoint**: `POST /api/tournaments`
-
-**Input**:
-```json
-{
-  "name": "Elite Four Championship",
-  "max_rounds": 5,
-  "tournament_active_time": 60
-}
-```
-
-**Expected Output**:
-```json
-{
-  "message": "Tournament created successfully",
-  "tournament": {
-    "id": "507f1f77bcf86cd799439011",
-    "name": "Elite Four Championship",
-    "status": "live",
-    "maxRounds": 5,
-    "currentRound": 0,
-    "tournamentActiveTime": 60,
-    "endTime": "2025-01-20T11:30:00.000Z",
-    "tournamentEndsIn": "59m 30s",
-    "createdAt": "2025-01-20T10:30:00.000Z"
-  }
-}
-```
-
-### 4.2 List Live Tournaments
-
-**Endpoint**: `GET /api/tournaments/live`
-
-### 4.3 List Completed Tournaments
-
-**Endpoint**: `GET /api/tournaments/completed`
-
-### 4.4 Add Battle to Tournament
-
-**Endpoint**: `POST /api/tournaments/:tournamentId/battle`
-
-**Input**:
-```json
-{
-  "attacker": "pikachu",
-  "defender": "bulbasaur"
-}
-```
-
-### 4.5 Get Tournament Results
-
-**Endpoint**: `GET /api/tournaments/:tournamentId/results`
-
-### 4.6 Implementation Details
-
-#### Tournament Creation Logic
-- **End Time Calculation**: Add tournament_active_time (in minutes) to current timestamp
-- **Default Values**: Set currentRound to 0, status to "live"
-- **User Association**: Link tournament to authenticated user via userId
-- **HP State Initialization**: Create empty hpState object for tracking Pokemon HP
-
-#### Time Management Strategy
-- **End Time Storage**: Store as ISO timestamp in database
-- **Human-Readable Format**: Convert remaining time to "Xh Ym Zs" format
-- **Status Updates**: Check if current time > endTime to mark as completed
-- **Time Calculations**: Use Date.now() and new Date() for time operations
-
-## Task 5: Pokemon Filtering & Sorting
-
-### 5.1 Filter by Type
+### 4.1 Filter by Type
 
 **Endpoint**: `GET /api/pokemon?type=fire`
 
-### 5.2 Filter by Generation
+### 4.2 Filter by Generation
 
 **Endpoint**: `GET /api/pokemon?generation=1`
 
-### 5.3 Filter by Stats
+### 4.3 Filter by Stats
 
 **Endpoint**: `GET /api/pokemon?minStats=500&maxStats=700`
 
-### 5.4 Sort Pokemon
+### 4.4 Sort Pokemon
 
 **Endpoint**: `GET /api/pokemon?sortBy=name&sortOrder=asc`
 
@@ -436,11 +362,11 @@ Fix existing issues and implement missing Pokemon Battle Simulator features in t
 
 **Sort Orders**: `asc` or `desc`
 
-### 5.5 Combined Filters
+### 4.5 Combined Filters
 
 **Endpoint**: `GET /api/pokemon?type=water&generation=1&sortBy=name&sortOrder=asc&limit=10`
 
-### 5.6 Implementation Details
+### 4.6 Implementation Details
 
 #### Filtering Strategy
 - **Type Filtering**: Check if Pokemon.types array includes the filter type
@@ -459,9 +385,9 @@ Fix existing issues and implement missing Pokemon Battle Simulator features in t
 - **Generation 7**: Pokemon IDs 722-809
 - **Generation 8**: Pokemon IDs 810+
 
-## Task 6: Error Handling & Validation
+## Task 5: Error Handling & Validation
 
-### 6.1 Error Handling
+### 5.1 Error Handling
 
 - **400**: Invalid input/validation errors
 - **401**: Authentication failures
@@ -469,15 +395,15 @@ Fix existing issues and implement missing Pokemon Battle Simulator features in t
 - **404**: Resource not found
 - **500**: Server errors
 
-### 6.2 Input Validation
+### 5.2 Input Validation
 
 - **Joi Schemas**: Validate all input parameters
 - **Error Messages**: Descriptive validation error messages
 - **Security**: Prevent injection attacks and malformed data
 
-## Task 7: Logging & Monitoring
+## Task 6: Logging & Monitoring
 
-### 7.1 Request Logging
+### 6.1 Request Logging
 
 **Requirements**:
 - Log all API requests to `access.log`
@@ -489,7 +415,7 @@ Fix existing issues and implement missing Pokemon Battle Simulator features in t
 [2025-01-20T10:30:00.000Z] GET /api/pokemon 200 150ms
 ```
 
-### 7.2 Health Check
+### 6.2 Health Check
 
 **Endpoint**: `GET /health`
 
@@ -502,9 +428,9 @@ Fix existing issues and implement missing Pokemon Battle Simulator features in t
 }
 ```
 
-## Task 8: Caching System
+## Task 7: Caching System
 
-### 8.1 Cache Implementation
+### 7.1 Cache Implementation
 
 **Requirements**:
 - Cache Pokemon list responses for 5 minutes
@@ -517,14 +443,14 @@ Fix existing issues and implement missing Pokemon Battle Simulator features in t
 - Subsequent identical requests: `cached: true`, faster execution
 - Cache key should include all query parameters
 
-## Task 9: Testing
+## Task 8: Testing
 
-### 9.1 Test Implementation
+### 8.1 Test Implementation
 
 - **Unit Tests**: Test individual functions and services
 - **Integration Tests**: Test API endpoints and database interactions
 - **Authentication Tests**: Test login, registration, and protected routes
-- **Battle Logic Tests**: Test battle simulation and HP persistence
+- **Battle Logic Tests**: Test battle simulation
 - **Error Handling Tests**: Test error scenarios and edge cases
 
 ## Environment Setup
@@ -549,11 +475,6 @@ CACHE_TTL=300000
 | `/api/pokemon/:name` | `GET` | Get Pokemon details | Validate Pokemon name | `200 OK` + Pokemon details |
 | `/api/battle` | `POST` | Simulate battle | Validate Pokemon data, simulate battle | `200 OK` + battle result |
 | `/api/battle` | `GET` | List user's battles | Return user's battles sorted by newest | `200 OK` + battles array |
-| `/api/tournaments` | `POST` | Create tournament | Validate input, set defaults | `201 Created` + tournament object |
-| `/api/tournaments/live` | `GET` | List live tournaments | Return live tournaments only | `200 OK` + tournaments array |
-| `/api/tournaments/completed` | `GET` | List completed tournaments | Return completed tournaments only | `200 OK` + tournaments array |
-| `/api/tournaments/:id/battle` | `POST` | Add battle to tournament | Validate Pokemon names, simulate battle | `201 Created` + battle object |
-| `/api/tournaments/:id/results` | `GET` | Get tournament results | Return tournament with all battles | `200 OK` + tournament results |
 | `/health` | `GET` | Health check | Return system status | `200 OK` + health object |
 
 ## Project Structure
@@ -579,7 +500,7 @@ src/
 - **Error handling** - Proper HTTP status codes and error responses
 - **Code quality** - Clean, readable, and maintainable code
 - **Testing awareness** - Ensure all provided tests pass
-- **System design** - Tournament management and battle simulation logic
+- **System design** - Battle simulation logic and Pokemon data management
 
 ## Evaluation Criteria
 

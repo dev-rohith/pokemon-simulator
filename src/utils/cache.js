@@ -1,24 +1,26 @@
-class Cache {
-  constructor() {
-    this.cache = new Map();
-  }
+// In-memory cache use appropriate data structures
+const cache = new Map();
 
-  get(key) {
-    return null;
-  }
+// Check if key exists and not expired, return value or null
+const get = (key) => {
+  return null;
+};
 
-  set(key, value, ttl = 300000) {
-    // Placeholder
-  }
+// Store value with expiry time (current time + ttl)
+const set = (key, value, ttl = 300000) => {
+};
 
-  delete(key) {
-    this.cache.delete(key);
-  }
+// Delete key from cache
+const deleteKey = (key) => {
+};
 
-  clear() {
-    this.cache.clear();
-  }
-}
+// Clear all cache entries
+const clear = () => {
+};
 
-const cache = new Cache();
-module.exports = cache;
+module.exports = {
+  get,
+  set,
+  delete: deleteKey,
+  clear
+};
