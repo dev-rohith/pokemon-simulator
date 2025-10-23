@@ -1,11 +1,9 @@
 const request = require('supertest');
 const app = require('../src/server');
 
-// JWT token will be obtained through login
 let authToken = null;
 
 describe('Public API - Basic functionality', () => {
-  // Setup: Register and login to get JWT token
   beforeAll(async () => {
     await request(app)
       .post('/api/auth/register')
@@ -216,8 +214,7 @@ describe('Public API - Basic functionality', () => {
       expect(res.body.data).toHaveProperty('types');
     }, 30000);
 
-    test.skip('returns 404 for non-existent Pokemon', async () => {
-      // Use a timestamp to ensure unique Pokemon name
+    test('returns 404 for non-existent Pokemon', async () => {
       const uniqueName = `definitelynotapokemon${Date.now()}`;
       const res = await request(app)
         .get(`/api/pokemon/${uniqueName}`)
@@ -230,7 +227,7 @@ describe('Public API - Basic functionality', () => {
       const res = await request(app)
         .get('/api/pokemon/')
         .set('Authorization', `Bearer ${authToken}`);
-      expect(res.status).toBe(200); // This hits the list endpoint, not details
+      expect(res.status).toBe(200);
     });
   });
 
@@ -239,16 +236,13 @@ describe('Public API - Basic functionality', () => {
       const fs = require('fs');
       const path = require('path');
       
-      // Make a request to trigger logging
       const response = await request(app)
         .get('/health');
       
       expect(response.status).toBe(200);
       
-      // Wait a bit for the file to be written
       await new Promise(resolve => setTimeout(resolve, 1000));
       
-      // Check if access.log file was created (either in root or logs directory)
       const rootLogExists = fs.existsSync(path.join(__dirname, '..', 'access.log'));
       const logsDirLogExists = fs.existsSync(path.join(__dirname, '..', 'logs', 'access.log'));
       

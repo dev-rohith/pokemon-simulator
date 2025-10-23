@@ -17,7 +17,7 @@ function calculateDamage(attacker, defender, typeModifier) {
   return Math.max(1, damage);
 }
 
-function simulateBattle(pokemon1, pokemon2) {
+function runBattle(pokemon1, pokemon2) {
   console.log(`🔥 BATTLE START: ${pokemon1.name} vs ${pokemon2.name}`);
   
   const fighter1 = {
@@ -93,7 +93,7 @@ function simulateBattle(pokemon1, pokemon2) {
 const simulateBattle = async (req, res) => {
   try {
     const { attacker1, attacker2 } = validate(req.body, battleSimulateSchema);
-    const result = simulateBattle(attacker1, attacker2);
+    const result = runBattle(attacker1, attacker2);
     
     const battle = new Battle({
       attacker1: attacker1.name,

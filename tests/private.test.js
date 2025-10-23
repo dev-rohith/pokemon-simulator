@@ -1,20 +1,15 @@
 const request = require('supertest');
 const app = require('../src/server');
-const { calculateDamage, simulateBattle } = require('../src/services/battle.service');
 const cache = require('../src/utils/cache');
 
-// JWT token will be obtained through login
 let authToken = null;
 
 describe('Private API and logic - Deep tests and edge cases', () => {
-  // Setup: Register and login to get JWT token
   beforeAll(async () => {
-    // Register a test user
     await request(app)
       .post('/api/auth/register')
       .send({ username: 'testuser2', password: 'testpass123' });
-    
-    // Login to get JWT token
+
     const loginRes = await request(app)
       .post('/api/auth/login')
       .send({ username: 'testuser2', password: 'testpass123' });
@@ -226,7 +221,6 @@ describe('Private API and logic - Deep tests and edge cases', () => {
         .set('Authorization', `Bearer ${authToken}`)
         .send(battleData);
 
-      // Then list battles
       const res = await request(app)
         .get('/api/battle')
         .set('Authorization', `Bearer ${authToken}`);
@@ -281,15 +275,12 @@ describe('Private API and logic - Deep tests and edge cases', () => {
       const key = 'expiry-test';
       const value = { test: 'data' };
       
-      cache.set(key, value, 100); // 100ms TTL
+      cache.set(key, value, 100); 
       
-      // Should be available immediately
       expect(cache.get(key)).toEqual(value);
       
-      // Wait for expiry
       await new Promise(resolve => setTimeout(resolve, 150));
       
-      // Should be null after expiry
       expect(cache.get(key)).toBeNull();
     });
   });
