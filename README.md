@@ -188,8 +188,11 @@ Authenticated users can:
 ```
 
 **Important**: 
-- Apply only limit and page filters on the external API. Do not use sortBy and sortOrder on the external API. First get records using limit and page, then manually sort and order them on the server.
-- Pokemon List API returns only `id` and `name` - no other fields needed.
+* When calling the external API for the Pokemon list, **only apply `limit` and `page` filters** (using `limit` and `offset` parameters).
+* **Do NOT apply `sortBy` or `sortOrder` filters on the external API**—the external API doesn’t support sorting by those fields.
+* After fetching the paged data from the external API, **perform sorting and ordering locally on your server** based on `sortBy` and `sortOrder` parameters.
+* The Pokemon List API response should include **only the `id` and `name` fields** for each Pokemon — no extra data.
+
 - `executionTime: >0` means data was fetched fresh from PokeAPI
 - `executionTime: 0` means data was served from cache (instant)
 
@@ -226,32 +229,22 @@ Authenticated users can:
   "executionTime": 584
 }
 ```
+**Implementation Notes:**
+* Call external API directly:
+  `GET https://pokeapi.co/api/v2/pokemon/{name}`
+* Transform the response by:
+
+  * Extracting `types` as an array of type names
+  * Converting `stats` array into an object with camelCase keys and adding a `total` sum
+  * Extracting `abilities` as an array of ability names
+  * Renaming `base_experience` to `baseExperience`
+  * Extracting sprite URL from `sprites.front_default`
+
+
 
 **Cache Performance**:
 - `cached: true, executionTime: 0` - Data served from cache (instant)
 - `cached: false, executionTime: 584` - Data fetched fresh from PokeAPI
-
-### 3.1 Implementation Details
-
-#### PokeAPI Integration Strategy
-1. **External API Call**: `GET https://pokeapi.co/api/v2/pokemon?limit={limit}&offset={offset}` - Only fetch what you need
-2. **Response Structure**: PokeAPI returns `{count, next, previous, results: [{name, url}]}`
-3. **Individual Pokemon Data**: Each Pokemon URL needs separate API call for detailed stats
-4. **Batch Processing**: Use Promise.all() to fetch all Pokemon details simultaneously
-5. **Local Processing**: Apply all filtering, sorting, and pagination locally after fetching data
-
-#### Data Transformation Process
-- **PokeAPI Response**: Contains nested objects for types, stats, abilities
-- **Transform Types**: Extract type names from nested type objects
-- **Transform Stats**: Convert stats array to object with stat names as keys
-- **Calculate Total Stats**: Sum all base_stat values for total calculation
-- **Transform Abilities**: Extract ability names from nested ability objects
-- **Sprite URL**: Use front_default from sprites object
-
-#### Data Processing
-- **Response Processing**: Transform PokeAPI data to match expected output format
-- **Error Handling**: Handle API failures and invalid Pokemon names gracefully
-- **Performance**: Optimize API calls and data processing for better response times
 
 ## Task 4: Caching System
 
