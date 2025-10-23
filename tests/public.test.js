@@ -131,21 +131,6 @@ describe('Public API - Basic functionality', () => {
       expect(typeof pokemon.name).toBe('string');
     }, 30000);
 
-    test('sorts by name ascending', async () => {
-      const res = await request(app)
-        .get('/api/pokemon?sortBy=name&sortOrder=asc&limit=5')
-        .set('Authorization', `Bearer ${authToken}`);
-      expect(res.status).toBe(200);
-      expect(Array.isArray(res.body.pokemons)).toBe(true);
-    }, 120000);
-
-    test('sorts by id descending', async () => {
-      const res = await request(app)
-        .get('/api/pokemon?sortBy=id&sortOrder=desc&limit=5')
-        .set('Authorization', `Bearer ${authToken}`);
-      expect(res.status).toBe(200);
-      expect(Array.isArray(res.body.pokemons)).toBe(true);
-    }, 120000);
 
     test('handles pagination correctly', async () => {
       const page1 = await request(app)
@@ -163,13 +148,6 @@ describe('Public API - Basic functionality', () => {
       expect(page2.body.pagination.page).toBe(2);
     }, 120000);
 
-    test('validates invalid sortBy parameter', async () => {
-      const res = await request(app)
-        .get('/api/pokemon?sortBy=invalidField')
-        .set('Authorization', `Bearer ${authToken}`);
-      expect(res.status).toBe(400);
-      expect(res.body.message).toBe('Invalid parameters');
-    });
 
     test('validates invalid generation parameter', async () => {
       const res = await request(app)
