@@ -309,4 +309,48 @@ describe('Private API and logic - Deep tests and edge cases', () => {
       expect(res.status).toBe(401);
     });
   });
+
+  describe('Request Logging', () => {
+    test('morgan creates access.log file and logs API calls', async () => {
+      const fs = require('fs');
+      const path = require('path');
+      const accessLogPath = path.join(__dirname, '..', 'access.log');
+      
+      // Make some API calls to generate log entries
+      await request(app)
+        .get('/health')
+        .set('Authorization', `Bearer ${authToken}`);
+      
+      await request(app)
+        .get('/api/pokemon?limit=1')
+        .set('Authorization', `Bearer ${authToken}`);
+      
+      await request(app)
+        .post('/api/battle')
+        .set('Authorization', `Bearer ${authToken}`)
+        .send({
+          attacker1: {
+            name: 'test1',
+            stats: { hp: 50, attack: 50, defense: 50, specialAttack: 50, specialDefense: 50, speed: 50, total: 300 }
+          },
+          attacker2: {
+            name: 'test2',
+            stats: { hp: 50, attack: 50, defense: 50, specialAttack: 50, specialDefense: 50, speed: 50, total: 300 }
+          }
+        });
+      
+      await new Promise(resolve => setTimeout(resolve, 200));
+      
+      expect(fs.existsSync(accessLogPath)).toBe(true);
+      
+      const logContent = fs.readFileSync(accessLogPath, 'utf8');
+      expect(logContent.length).toBeGreaterThan(0);
+      
+      expect(logContent).toContain('GET /health');
+      expect(logContent).toContain('GET /api/pokemon');
+      expect(logContent).toContain('POST /api/battle');
+      
+      expect(logContent).toContain('200');
+    });
+  });
 });
