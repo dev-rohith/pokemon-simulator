@@ -10,7 +10,6 @@ const { errorHandler } = require('./middleware/errorHandler');
 const pokemonRoutes = require('./routes/pokemon.routes');
 const authRoutes = require('./routes/auth.routes');
 const battleRoutes = require('./routes/battle.routes');
-const tournamentRoutes = require('./routes/tournament.routes');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -42,9 +41,6 @@ app.get('/', (req, res) => {
       pokemonDetails: '/api/pokemon/:name',
       battle: '/api/battle',
       battles: '/api/battle (GET)',
-      tournaments: '/api/tournaments',
-      liveTournaments: '/api/tournaments/live',
-      completedTournaments: '/api/tournaments/completed',
     },
   });
 });
@@ -53,7 +49,6 @@ app.get('/', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/pokemon', pokemonRoutes);
 app.use('/api/battle', battleRoutes);
-app.use('/api/tournaments', tournamentRoutes);
 
 // 404 handler
 app.use((req, res) => {
