@@ -1,11 +1,11 @@
 const express = require('express');
-const { listBattlesController } = require('../controllers/battleController');
+const { listBattles } = require('../controllers/battleController');
 const { authenticate } = require('../middleware/auth');
 const router = express.Router();
 
 router.use(authenticate);
 
 router.post('/', '' );
-router.get('/', listBattlesController);
+router.get('/', listBattles);
 
 module.exports = router;

@@ -23,10 +23,10 @@ You've been provided with a starter template that simulates a scenario where you
 - Basic Express server setup with middleware
 - Database connection configuration
 - Complete route structure for all endpoints
-- **Battle simulation logic** (`src/services/battle.service.js`) 
+- **Battle simulation logic** (`src/controllers/battleController.js`) 
 - Project structure and dependencies
 
-**Important**: Everything needs to be implemented  except the battle simulation logic which is already provided in `src/services/battle.service.js`.
+**Important**: Everything needs to be implemented  except the battle simulation logic which is already provided in `src/controllers/battleController.js`.
 
 ## Submission Requirements
 - Check out to `dev` branch and solve the assessment.
@@ -279,7 +279,7 @@ Authenticated users can:
 
 ## Task 5: Battle Simulation
 
-**Note**: The battle simulation logic is already fully implemented in `src/services/battle.service.js`. You only need to integrate it into the battle API endpoints.
+**Note**: The battle simulation logic is already fully implemented in `src/controllers/battleController.js`. You only need to integrate it into the battle API endpoints.
 Find the handler logic and build api endpoint.
 
 ### 5.1 Simulate Battle
