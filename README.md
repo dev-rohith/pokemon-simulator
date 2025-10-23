@@ -1,6 +1,35 @@
 # Pokemon Battle Simulator - Technical Assessment
 
-## Overview
+## 🚀 Starter Template Overview
+
+This is a **starter template** for a Pokemon Battle Simulator backend assessment. The codebase contains basic structure and placeholder implementations. Your task is to implement the missing functionality to make all tests pass.
+
+### What's Already Implemented ✅
+- Basic Express server setup with middleware
+- Database connection configuration
+- Complete route structure for all endpoints
+- **Battle simulation logic** (`src/services/battle.service.js`) - fully functional
+- Comprehensive test suite with 43 test cases
+- Project structure and dependencies
+
+### What You Need to Implement 🔧
+- **Authentication System** - JWT-based registration/login
+- **Pokemon API** - List and details endpoints with filtering, sorting, pagination
+- **Battle API** - Simulate battles and store results in database
+- **Tournament System** - Create and manage tournaments with HP persistence
+- **Caching System** - In-memory caching for performance optimization
+- **Input Validation** - Joi schemas for all endpoints
+- **Error Handling** - Centralized error management
+- **Database Models** - Complete Mongoose schemas
+
+### Quick Start
+```bash
+npm install        # Install dependencies
+npm test          # Run tests to see what needs implementation
+npm start         # Start the server (will show placeholder responses)
+```
+
+## Assessment Overview
 
 This is a Pokemon Battle Simulator backend where users can create tournaments, simulate Pokemon battles, and manage Pokemon data. The system includes tournament management, battle simulation with HP persistence, Pokemon data integration, and advanced filtering capabilities.
 
@@ -34,11 +63,13 @@ Authenticated users can:
 
 ```bash
 npm install        # Install all project dependencies
-npm run dev        # Start the development server
-npm test           # Run all tests
+npm test          # Run tests to see current status (all should fail initially)
+npm start         # Start the development server
 ```
 
-You've been provided with a partially implemented API codebase that simulates a real-world scenario where you need to debug existing functionality and complete missing features. This assessment evaluates your ability to work with existing code, implement RESTful APIs, external API integration, and maintain code quality standards.
+**Current State**: The codebase contains placeholder implementations that return "Not implemented" responses. All controllers, models, and services need to be implemented according to the specifications below.
+
+You've been provided with a starter template that simulates a real-world scenario where you need to implement missing features from scratch. This assessment evaluates your ability to implement RESTful APIs, external API integration, database operations, and maintain code quality standards.
 
 ## Task Description
 
@@ -222,6 +253,8 @@ Fix existing issues and implement missing Pokemon Battle Simulator features in t
 - **Cache TTL**: 5 minutes for Pokemon lists, 10 minutes for individual Pokemon
 
 ## Task 3: Battle Simulation
+
+**Note**: The battle simulation logic is already fully implemented in `src/services/battle.service.js`. You only need to integrate it into the battle API endpoints.
 
 ### 3.1 Simulate Battle
 
@@ -426,51 +459,25 @@ Fix existing issues and implement missing Pokemon Battle Simulator features in t
 - **Generation 7**: Pokemon IDs 722-809
 - **Generation 8**: Pokemon IDs 810+
 
-## Task 6: Rate Limiting
+## Task 6: Error Handling & Validation
 
-### 6.1 Rate Limiting Rules
-
-**Requirements**:
-- 100 requests per 15 minutes per IP
-- 10 requests per minute per authenticated user
-- Return appropriate HTTP status codes and headers
-
-**Rate Limit Headers**:
-```
-X-RateLimit-Limit: 100
-X-RateLimit-Remaining: 95
-X-RateLimit-Reset: 1640995200
-```
-
-**Rate Limit Exceeded Response**:
-```json
-{
-  "error": "Rate limit exceeded",
-  "message": "Too many requests, please try again later",
-  "retryAfter": 900
-}
-```
-
-## Task 7: Error Handling & Validation
-
-### 7.1 Error Handling
+### 6.1 Error Handling
 
 - **400**: Invalid input/validation errors
 - **401**: Authentication failures
 - **403**: Forbidden access
 - **404**: Resource not found
-- **429**: Rate limit exceeded
 - **500**: Server errors
 
-### 7.2 Input Validation
+### 6.2 Input Validation
 
 - **Joi Schemas**: Validate all input parameters
 - **Error Messages**: Descriptive validation error messages
 - **Security**: Prevent injection attacks and malformed data
 
-## Task 8: Logging & Monitoring
+## Task 7: Logging & Monitoring
 
-### 8.1 Request Logging
+### 7.1 Request Logging
 
 **Requirements**:
 - Log all API requests to `access.log`
@@ -482,7 +489,7 @@ X-RateLimit-Reset: 1640995200
 [2025-01-20T10:30:00.000Z] GET /api/pokemon 200 150ms
 ```
 
-### 8.2 Health Check
+### 7.2 Health Check
 
 **Endpoint**: `GET /health`
 
@@ -495,9 +502,9 @@ X-RateLimit-Reset: 1640995200
 }
 ```
 
-## Task 9: Caching System
+## Task 8: Caching System
 
-### 9.1 Cache Implementation
+### 8.1 Cache Implementation
 
 **Requirements**:
 - Cache Pokemon list responses for 5 minutes
@@ -510,9 +517,9 @@ X-RateLimit-Reset: 1640995200
 - Subsequent identical requests: `cached: true`, faster execution
 - Cache key should include all query parameters
 
-## Task 10: Testing
+## Task 9: Testing
 
-### 10.1 Test Implementation
+### 9.1 Test Implementation
 
 - **Unit Tests**: Test individual functions and services
 - **Integration Tests**: Test API endpoints and database interactions
@@ -530,8 +537,6 @@ MONGODB_URI=your_database_connection_string
 JWT_SECRET=your_jwt_secret_key
 POKEAPI_BASE_URL=https://pokeapi.co/api/v2
 CACHE_TTL=300000
-RATE_LIMIT_WINDOW_MS=900000
-RATE_LIMIT_MAX_REQUESTS=100
 ```
 
 ## API Endpoints
@@ -557,7 +562,7 @@ RATE_LIMIT_MAX_REQUESTS=100
 src/
 ├── config/         # Database configuration
 ├── controllers/    # Route controllers
-├── middleware/     # Auth, rate limiting, error handling
+├── middleware/     # Auth, error handling
 ├── models/         # Database models
 ├── routes/         # Express routes
 ├── services/       # Business logic services

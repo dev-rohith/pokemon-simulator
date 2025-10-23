@@ -6,9 +6,11 @@ const morgan = require('morgan');
 const fs = require('fs');
 const path = require('path');
 const { connectDatabase } = require('./config/database');
+const { errorHandler } = require('./middleware/errorHandler');
 const pokemonRoutes = require('./routes/pokemon.routes');
 const authRoutes = require('./routes/auth.routes');
 const battleRoutes = require('./routes/battle.routes');
+const tournamentRoutes = require('./routes/tournament.routes');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -40,6 +42,9 @@ app.get('/', (req, res) => {
       pokemonDetails: '/api/pokemon/:name',
       battle: '/api/battle',
       battles: '/api/battle (GET)',
+      tournaments: '/api/tournaments',
+      liveTournaments: '/api/tournaments/live',
+      completedTournaments: '/api/tournaments/completed',
     },
   });
 });
@@ -48,11 +53,15 @@ app.get('/', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/pokemon', pokemonRoutes);
 app.use('/api/battle', battleRoutes);
+app.use('/api/tournaments', tournamentRoutes);
 
 // 404 handler
 app.use((req, res) => {
   res.status(404).json({ message: 'Route not found' });
 });
+
+// Error handling middleware
+app.use(errorHandler);
 
 // Start server
 if (require.main === module) {

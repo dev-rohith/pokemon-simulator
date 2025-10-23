@@ -1,26 +1,24 @@
-const store = new Map();
+class Cache {
+  constructor() {
+    this.cache = new Map();
+  }
 
-function get(key) {
-  const entry = store.get(key);
-  if (!entry) return null;
-  if (entry.expiresAt && Date.now() > entry.expiresAt) {
-    store.delete(key);
+  get(key) {
     return null;
   }
-  return entry.value;
+
+  set(key, value, ttl = 300000) {
+    // Placeholder
+  }
+
+  delete(key) {
+    this.cache.delete(key);
+  }
+
+  clear() {
+    this.cache.clear();
+  }
 }
 
-function set(key, value, ttl) {
-  const expiresAt = ttl ? Date.now() + ttl : null;
-  store.set(key, { value, expiresAt });
-}
-
-function clear() {
-  store.clear();
-}
-
-module.exports = {
-  get,
-  set,
-  clear,
-};
+const cache = new Cache();
+module.exports = cache;
