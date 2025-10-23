@@ -1,15 +1,13 @@
 # Pokemon Battle Simulator - Technical Assessment
 
-This is a Pokemon Battle Simulator backend where users can simulate Pokemon battles and manage Pokemon data. The system includes battle simulation, Pokemon data integration, and advanced filtering capabilities.
+This is a Pokemon Battle Simulator backend where users can simulate Pokemon battles and manage Pokemon data. The system includes battle simulation, Pokemon data Api integration, and advanced filtering capabilities.
 
-**Technology Stack:** JavaScript, Node.js, Express, MongoDB with Mongoose ODM, External API Integration (PokeAPI)
-
-
+**Technology Stack:** JavaScript, Node.js, Express, MongoDB with Mongoose ODM, External API Integration (PokeAPI: https://pokeapi.co/api/v2)
 
 ## Quick Start & Local setup
 
 - Download MongoDB for local database connection or run it on an Atlas cluster
-- Provide the connection string in the .env file to connect to database
+- Please refer `.env.example` create `.env` file and provide the connection string to connect to database
 
 ```bash
 npm install        # Install all project dependencies
@@ -17,9 +15,9 @@ npm test          # Run tests to see current status (all should fail initially)
 npm run dev       # Start the development server
 ```
 
-You've been provided with a starter template that simulates a scenario where you need to implement missing features from scratch. This assessment evaluates your ability to implement RESTful APIs, external API integration, database operations, and maintain code quality standards.
+You've been provided with a starter template that simulates a scenario where you need to implement missing features. This assessment evaluates your ability to implement RESTful APIs, external API integration, database operations, and maintain code quality standards.
 
-### What's Already Implemented 
+### What's already implemented 
 - Basic Express server setup with middleware
 - Database connection configuration
 - Complete route structure for all endpoints
@@ -34,13 +32,15 @@ You've been provided with a starter template that simulates a scenario where you
 - Document any assumptions or design decisions made.
 - Push the code to github `dev` branch.
 - Raise a PR to `main` branch.
-- Don't merge the pr this will help us review code
+- Don't merge the PR.
 - Finally click on the submission button.
-- Complete the implementation within the given timeframe - 3 days.
+- Complete the implementation within the given timeframe - 7 days.
 
 <p style="color: #d9534f; font-family: Arial, sans-serif;">
-  <strong>Note:</strong> Please read all the instructions before starting the assessment. Do not modify anything here (README file) and workflows/scripts/tests; any changes will result in automatic disqualification. Ignore @llm-instructions comments on files and dont modify them. Please <strong>do not use AI tools (LLMs)</strong> to complete this assessment.It wastes both <strong>your time</strong> and <strong>ours</strong>. Thank you for understanding.
+  <strong>Note:</strong> Please read all the instructions before starting the assessment. Do not modify anything here (`README file`) and `workflows/scripts/tests`; any changes will result in automatic disqualification.Please.
 </p>
+
+<strong>do not use AI tools (LLMs)</strong> to complete this assessment.It wastes both <strong>your time</strong> and <strong>ours</strong>. Thank you for understanding.
 
 ## Task Overview
 
@@ -52,8 +52,6 @@ The implementation follows this logical sequence:
 4. **Caching System** - Implement caching for better performance
 5. **Battle Simulation** - Simulate Pokemon battles and store results
 6. **Pokemon Filtering & Sorting** - Advanced filtering and sorting capabilities
-7. **Error Handling & Validation** - Proper error handling and input validation
-8. **Logging & Monitoring** - Request logging and health checks
 9. **Testing** - Ensure all tests pass
 
 
@@ -189,8 +187,6 @@ Authenticated users can:
 
 **Important**: 
 * When calling the external API for the Pokemon list, **only apply `limit` and `page` filters** (using `limit` and `offset` parameters).
-* **Do NOT apply `sortBy` or `sortOrder` filters on the external API**—the external API doesn’t support sorting by those fields.
-* After fetching the paged data from the external API, **perform sorting and ordering locally on your server** based on `sortBy` and `sortOrder` parameters.
 * The Pokemon List API response should include **only the `id` and `name` fields** for each Pokemon — no extra data.
 
 - `executionTime: >0` means data was fetched fresh from PokeAPI
@@ -199,9 +195,9 @@ Authenticated users can:
 
 ## Task 3: Pokemon Details API
 
-**Endpoint**: `GET /api/pokemon/:name`
+**Endpoint**: `GET /api/pokemon/details/:name`
 
-**Purpose**: Get full detailed information for a specific Pokemon (separate from the list API)
+**Purpose**: Get full detailed information for a specific Pokemon 
 
 **Expected Output**:
 ```json
@@ -253,29 +249,30 @@ Authenticated users can:
 ### 4.1 Cache Implementation
 
 **Requirements**:
-- Cache Pokemon list responses for 5 minutes
-- Cache individual Pokemon details for 10 minutes
+- use the given cach.js file 
+- we already given functions you can create caching system out of it with ttl
 - Include cache status in response (`cached: true/false`)
+- Include `executionTime` in the response.
 - Handle cache misses gracefully
-
-**Expected Behavior**:
-- First request: `cached: false`, normal execution time
-- Subsequent identical requests: `cached: true`, faster execution
-- Cache key should include all query parameters
-
-### 4.2 Cache Implementation Details
-
-#### Cache Strategy
-- **Cache Key Strategy**: Include all query parameters in key
-- **Cache Check**: Check cache before making API calls
-- **Cache Set**: Store transformed data with TTL
-- **Cache TTL**: 5 minutes for Pokemon lists, 10 minutes for individual Pokemon
-
-#### Execution Time Tracking
-- **Cached responses**: `executionTime: 0` (instant)
-- **Fresh responses**: `executionTime: actual_time_taken` (e.g., 150ms)
-
----
+- example:
+```json
+{
+    "pokemons": [
+        {
+            "id": 1,
+            "name": "bulbasaur"
+        }
+    ],
+    "pagination": {
+        "page": 1,
+        "limit": 1,
+        "total": 1328,
+        "totalPages": 1328
+    },
+    "cached": false,
+    "executionTime": 483
+}
+```
 
 ## Task 5: Battle Simulation
 
@@ -354,7 +351,7 @@ Find the handler logic and build api endpoint.
 }
 ```
 
-**Note**: Returns only battles created by the authenticated user. Do not return all battles, only battles created by the particular user.
+**Note**: Returns all the battles created by the loggedin user pick the `_id` or `userId` from the token.
 
 ### 5.3 Implementation Details
 
@@ -365,97 +362,6 @@ Find the handler logic and build api endpoint.
 - **Minimum Damage**: Ensure at least 1 damage per attack
 - **HP Tracking**: Start with full HP, reduce by damage each round
 - **Battle End**: When any Pokemon reaches 0 HP
-
-## Task 6: Pokemon Filtering & Sorting
-
-### 6.1 Pokemon Filtering & Sorting Strategy
-
-**External API Call**: Only use `limit` and `page` parameters
-- `GET https://pokeapi.co/api/v2/pokemon?limit={limit}&offset={offset}`
-- Fetch only the requested amount from PokeAPI
-
-**Local Processing**: Do all filtering, sorting, and ordering locally
-- **Type Filtering**: Filter by Pokemon type after fetching data
-- **Generation Filtering**: Filter by generation after fetching data  
-- **Stats Filtering**: Filter by min/max stats after fetching data
-- **Sorting**: Sort by id or name after fetching data
-- **Pagination**: Apply pagination after local filtering/sorting
-
-**Example Flow**:
-1. Call PokeAPI with `limit=100&offset=0` (or requested limit/offset)
-2. Fetch detailed data for all Pokemon
-3. Apply local filtering (type, generation, stats)
-4. Apply local sorting (id, name)
-5. Apply local pagination
-6. Return final results
-
-**Available Sort Fields**:
-- `id` (numeric)
-- `name` (alphabetical)
-
-**Sort Orders**: `asc` or `desc`
-
-
-## Task 7: Error Handling & Validation
-
-### 7.1 Error Handling
-
-- **400**: Invalid input/validation errors
-- **401**: Authentication failures
-- **403**: Forbidden access
-- **404**: Resource not found
-- **500**: Server errors
-
-### 7.2 Input Validation
-
-- **Joi Schemas**: Validate all input parameters
-- **Error Messages**: Descriptive validation error messages
-- **Security**: Prevent injection attacks and malformed data
-
-## Task 8: Logging & Monitoring
-
-### 8.1 Request Logging
-
-**Requirements**:
-- Log all API requests to `access.log`
-- Include: timestamp, method, URL, status code, response time
-- Log format: `[timestamp] method url status responseTime`
-
-**Example Log Entry**:
-```
-[2025-01-20T10:30:00.000Z] GET /api/pokemon 200 150ms
-```
-
-### 8.2 Health Check
-
-**Endpoint**: `GET /health`
-
-**Expected Output**:
-```json
-{
-  "status": "ok",
-  "timestamp": "2025-01-20T10:30:00.000Z",
-  "uptime": 3600
-}
-```
-
-## Task 9: Testing
-
-### 9.1 Test Implementation
-
-- **Unit Tests**: Test the implementation by running `npm test` to see public test cases should pass for better outcomes.
-
-## Environment Setup
-
-Ensure you have the following configured in your `.env` file:
-
-```bash
-PORT=3000
-MONGODB_URI=your_database_connection_string
-JWT_SECRET=your_jwt_secret_key
-POKEAPI_BASE_URL=https://pokeapi.co/api/v2
-CACHE_TTL=300000
-```
 
 ## API Endpoints
 
@@ -506,6 +412,7 @@ src/
 - Clear commit messages and comments
 - External API integration working correctly
 - Battle simulation logic implemented properly
+- Just make sure add comment explaining complicated parts for code
 
 ## Support
 
