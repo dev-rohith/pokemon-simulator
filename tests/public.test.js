@@ -198,13 +198,13 @@ describe('Public API - Basic functionality', () => {
 
   describe('Pokemon Details API', () => {
     test('requires authentication', async () => {
-      const res = await request(app).get('/api/pokemon/pikachu');
+      const res = await request(app).get('/api/pokemon/details/pikachu');
       expect(res.status).toBe(401);
     });
 
     test('returns Pokemon details with valid JWT token', async () => {
       const res = await request(app)
-        .get('/api/pokemon/pikachu')
+        .get('/api/pokemon/details/pikachu')
         .set('Authorization', `Bearer ${authToken}`);
       expect(res.status).toBe(200);
       expect(res.body).toHaveProperty('data');
@@ -217,7 +217,7 @@ describe('Public API - Basic functionality', () => {
     test('returns 404 for non-existent Pokemon', async () => {
       const uniqueName = `definitelynotapokemon${Date.now()}`;
       const res = await request(app)
-        .get(`/api/pokemon/${uniqueName}`)
+        .get(`/api/pokemon/details/${uniqueName}`)
         .set('Authorization', `Bearer ${authToken}`);
       expect(res.status).toBe(404);
       expect(res.body).toHaveProperty('message', 'Pokemon not found');
@@ -225,7 +225,7 @@ describe('Public API - Basic functionality', () => {
 
     test('validates empty Pokemon name', async () => {
       const res = await request(app)
-        .get('/api/pokemon/')
+        .get('/api/pokemon/details/')
         .set('Authorization', `Bearer ${authToken}`);
       expect(res.status).toBe(200);
     });

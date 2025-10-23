@@ -5,6 +5,6 @@ const { authenticate } = require('../middleware/auth');
 router.use(authenticate);
 
 router.get('/', getPokemonNames);
-router.get('/:name', getPokemonDetails);
+router.get('/details/:name', getPokemonDetails);
 
 module.exports = router;

@@ -14,32 +14,13 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 const accessLogPath = path.join(__dirname, '..', 'access.log');
-
+// create a write stream to the access.log file
 app.use(morgan('combined', { stream: '' }));
-
 
 app.use(helmet());
 app.use(cors());
 
 app.use(express.json());
-
-app.get('/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
-});
-
-app.get('/', (req, res) => {
-  res.json({
-    message: 'Pokemon Battle Simulator API',
-    version: '1.0.0',
-    endpoints: {
-      health: '/health',
-      pokemon: '/api/pokemon',
-      pokemonDetails: '/api/pokemon/:name',
-      battle: '/api/battle',
-      battles: '/api/battle (GET)',
-    },
-  });
-});
 
 app.use('/api/auth', authRoutes);
 app.use('/api/pokemon', pokemonRoutes);

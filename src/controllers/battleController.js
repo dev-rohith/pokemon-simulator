@@ -3,22 +3,63 @@ const { validate, battleSimulateSchema } = require('../utils/validators');
 const cache = require('../utils/cache');
 
 
-function calculateDamage(attacker, defender, typeModifier) {
-  const level = 50;
-  const basePower = 60;
 
-  const damage = Math.floor(
-    ((2 * level + 10) / 250) *
-    (attacker.stats.attack / defender.stats.defense) *
-    basePower *
-    (typeModifier || 1)
-  );
+const listBattles = async (req, res) => {
 
-  return Math.max(1, damage);
-}
+  res.status(501).json({ message: 'Not implemented' });
+};
+
+
+/*
+ This function simulates the battle between two pokemon
+ it saves the battle to the database
+ it returns the battle result
+ */
+const simulateBattle = async (req, res) => {
+  try {
+    const { attacker1, attacker2 } = validate(req.body, battleSimulateSchema);
+    const result = runBattle(attacker1, attacker2);
+    
+    const battle = new Battle({
+      attacker1: attacker1.name,
+      attacker2: attacker2.name,
+      winner: result.winner.name,
+      userId: req.user.id
+    });
+    
+    await battle.save();
+    
+    res.json({
+      message: 'Battle completed successfully',
+      battle: {
+        id: battle._id,
+        attacker1: battle.attacker1,
+        attacker2: battle.attacker2,
+        winner: battle.winner,
+        createdAt: battle.createdAt
+      }
+    });
+    
+  } catch (error) {
+    if (error.message.includes('Validation error')) {
+      return res.status(400).json({ 
+        message: 'Invalid input data',
+        errors: error.message.split(': ')[1].split(', ')
+      });
+    }
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+/*
+ This function simulates the battle between two pokemon
+ it swaps the attacker and defender after each round
+ it does stops battle when one of the pokemon faints
+ it returns the winner, loser, rounds and battle log
+ */
 
 function runBattle(pokemon1, pokemon2) {
-  console.log(`🔥 BATTLE START: ${pokemon1.name} vs ${pokemon2.name}`);
+  console.log(`🔥 battle start: ${pokemon1.name} vs ${pokemon2.name}`);
   
   const fighter1 = {
     ...pokemon1,
@@ -90,45 +131,21 @@ function runBattle(pokemon1, pokemon2) {
   };
 }
 
-const simulateBattle = async (req, res) => {
-  try {
-    const { attacker1, attacker2 } = validate(req.body, battleSimulateSchema);
-    const result = runBattle(attacker1, attacker2);
-    
-    const battle = new Battle({
-      attacker1: attacker1.name,
-      attacker2: attacker2.name,
-      winner: result.winner.name,
-      userId: req.user.id
-    });
-    
-    await battle.save();
-    
-    res.json({
-      message: 'Battle completed successfully',
-      battle: {
-        id: battle._id,
-        attacker1: battle.attacker1,
-        attacker2: battle.attacker2,
-        winner: battle.winner,
-        createdAt: battle.createdAt
-      }
-    });
-    
-  } catch (error) {
-    if (error.message.includes('Validation error')) {
-      return res.status(400).json({ 
-        message: 'Invalid input data',
-        errors: error.message.split(': ')[1].split(', ')
-      });
-    }
-    res.status(500).json({ message: 'Internal server error' });
-  }
-};
+// calculate the damage based on the attacker and defender stats
+function calculateDamage(attacker, defender, typeModifier) {
+  const level = 50;
+  const basePower = 60;
 
-const listBattles = async (req, res) => {
-  res.status(501).json({ message: 'Not implemented' });
-};
+  const damage = Math.floor(
+    ((2 * level + 10) / 250) *
+    (attacker.stats.attack / defender.stats.defense) *
+    basePower *
+    (typeModifier || 1)
+  );
+
+  return Math.max(1, damage);
+}
+
 
 module.exports = {
   simulateBattle,
