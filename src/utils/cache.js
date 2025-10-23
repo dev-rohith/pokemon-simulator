@@ -28,7 +28,7 @@ const clear = () => {
 
 /*
 This is an local cache, not a distributed cache already implemented
-understand this and implement a local cache system out of it with ttl
+understand and use this functions to implement the local cache system with ttl
 */
 
 module.exports = {
