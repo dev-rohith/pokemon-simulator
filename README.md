@@ -36,11 +36,10 @@ You've been provided with a starter template that simulates a scenario where you
 - Finally click on the submission button.
 - Complete the implementation within the given timeframe - 7 days.
 
-<p style="color: #d9534f; font-family: Arial, sans-serif;">
-  <strong>Note:</strong> Please read all the instructions before starting the assessment. Do not modify anything here (`README file`) and `workflows/scripts/tests`; any changes will result in automatic disqualification.Please.
-</p>
 
-<strong>do not use AI tools (LLMs)</strong> to complete this assessment.It wastes both <strong>your time</strong> and <strong>ours</strong>. Thank you for understanding.
+### Note: Please read all the instructions before starting the assessment. Do not modify anything here (`README file`) and `workflows/scripts/tests`; any changes will result in automatic disqualification.Please.
+
+### <strong>Do not use AI tools (LLMs)</strong> to complete this assessment.It wastes both <strong>your time</strong> and <strong>ours</strong>. Thank you for understanding.
 
 ## Task Overview
 
@@ -370,10 +369,10 @@ Find the handler logic and build api endpoint.
 | `/api/auth/register` | `POST` | User registration | Validate username/password, hash password | `201 Created` + user object |
 | `/api/auth/login` | `POST` | User login | Validate credentials, return JWT | `200 OK` + token + user |
 | `/api/pokemon` | `GET` | List Pokemon with filters | Support pagination, filtering, sorting | `200 OK` + Pokemon array + pagination |
-| `/api/pokemon/:name` | `GET` | Get Pokemon details | Validate Pokemon name | `200 OK` + Pokemon details |
+| `/api/pokemon/details/:name` | `GET` | Get Pokemon details | Validate Pokemon name | `200 OK` + Pokemon details |
 | `/api/battle` | `POST` | Simulate battle | Validate Pokemon data, simulate battle | `200 OK` + battle result |
 | `/api/battle` | `GET` | List user's battles | Return user's battles sorted by newest | `200 OK` + battles array |
-| `/health` | `GET` | Health check | Return system status | `200 OK` + health object |
+
 
 ## Project Structure
 
