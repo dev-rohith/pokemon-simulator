@@ -1,18 +1,16 @@
 {
   "name": "pokemon-battle-simulator",
   "version": "1.0.0",
-  "description": "Pokemon Battle Simulator API - Assessment Boilerplate",
+  "description": "Pokemon Battle Simulator API - Backend Assessment",
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
-    "test": "jest --detectOpenHandles --forceExit --coverage",
+    "test": "jest --detectOpenHandles --forceExit --json --outputFile=results.json",
     "test:coverage": "jest --coverage --detectOpenHandles --forceExit",
     "test:watch": "jest --watch",
     "lint": "eslint src/**/*.js",
-    "lint:fix": "eslint src/**/*.js --fix",
-    "seed": "node scripts/seed.js",
-    "verify": "node scripts/verify-mongoose.js"
+    "lint:fix": "eslint src/**/*.js --fix"
   },
   "keywords": [],
   "author": "",
