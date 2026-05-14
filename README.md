@@ -15,6 +15,8 @@ npm test          # Run tests to see current status (all should fail initially)
 npm run dev       # Start the development server
 ```
 
+
+
 You've been provided with a starter template that simulates a scenario where you need to implement missing features. This assessment evaluates your ability to implement RESTful APIs, external API integration, database operations, and maintain code quality standards.
 
 ### What's already implemented 
