@@ -4,7 +4,7 @@ This is a Pokemon Battle Simulator backend where users can simulate Pokemon batt
 
 **Technology Stack:** JavaScript, Node.js, Express, MongoDB with Mongoose ODM, External API Integration (PokeAPI: https://pokeapi.co/api/v2)
 
-## Quick Start & Local setup
+## Quick Start & Local s
 
 - Download MongoDB for local database connection or run it on an Atlas cluster
 - Please refer `.env.example` create `.env` file and provide the connection string to connect to database
